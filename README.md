@@ -9,26 +9,24 @@ Todos os times, nomes, marcas e uniformes são fictícios.
 
 ## Como rodar
 
-**Jeito mais fácil:** abra `dist/skyhoop.html` com duplo clique. É um único
-arquivo autocontido (Three.js, estilos e código embutidos) que funciona offline,
-sem servidor.
+**Abra o `index.html` com duplo clique.** Ele é um único arquivo autocontido
+(Three.js, estilos e código embutidos) que funciona offline, sem servidor.
+Se o jogo não puder iniciar (por exemplo, WebGL desativado no navegador), a tela
+de carregamento mostra o motivo e como resolver.
 
-**Desenvolvimento:** o código-fonte usa módulos ES, então o `index.html` precisa
-ser servido por HTTP (abrir direto do disco não funciona):
+**Desenvolvimento:** o código-fonte fica em `dev.html` + `src/` (módulos ES), que
+precisa ser servido por HTTP:
 
 ```bash
 npm start            # ou: node server.mjs 8080   (Node 18+, sem dependências)
-# alternativa: python3 -m http.server 8080
 ```
 
-Depois abra <http://localhost:8080>. A biblioteca Three.js está incluída em
-`lib/three/`.
-
-Após alterar o código, regenere o arquivo único com:
+e abra <http://localhost:8080/dev.html>. Depois de alterar o código, regenere o
+`index.html`:
 
 ```bash
 npm install          # instala o esbuild (só para o build)
-npm run build        # gera dist/skyhoop.html
+npm run build        # gera index.html a partir de dev.html + src/
 ```
 
 ## Controles
@@ -96,8 +94,8 @@ influenciam. A física da bola decide o resultado (aro, tabela, rede).
 ## Estrutura do projeto
 
 ```
-index.html, css/style.css     Página e estilos da interface
-build.mjs → dist/skyhoop.html  Versão em arquivo HTML único (abre sem servidor)
+index.html                     Jogo em arquivo único, GERADO por build.mjs (abre sem servidor)
+dev.html, css/style.css        Página-fonte (módulos ES) e estilos da interface
 lib/three/                     Three.js (r170) + addon Reflector
 src/
   main.js                      Ponto de entrada
