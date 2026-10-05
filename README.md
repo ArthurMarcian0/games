@@ -9,8 +9,12 @@ Todos os times, nomes, marcas e uniformes são fictícios.
 
 ## Como rodar
 
-O jogo usa módulos ES, então precisa ser servido por HTTP (abrir o `index.html`
-direto do disco não funciona).
+**Jeito mais fácil:** abra `dist/skyhoop.html` com duplo clique. É um único
+arquivo autocontido (Three.js, estilos e código embutidos) que funciona offline,
+sem servidor.
+
+**Desenvolvimento:** o código-fonte usa módulos ES, então o `index.html` precisa
+ser servido por HTTP (abrir direto do disco não funciona):
 
 ```bash
 npm start            # ou: node server.mjs 8080   (Node 18+, sem dependências)
@@ -18,7 +22,14 @@ npm start            # ou: node server.mjs 8080   (Node 18+, sem dependências)
 ```
 
 Depois abra <http://localhost:8080>. A biblioteca Three.js está incluída em
-`lib/three/`, então o jogo funciona offline.
+`lib/three/`.
+
+Após alterar o código, regenere o arquivo único com:
+
+```bash
+npm install          # instala o esbuild (só para o build)
+npm run build        # gera dist/skyhoop.html
+```
 
 ## Controles
 
@@ -86,6 +97,7 @@ influenciam. A física da bola decide o resultado (aro, tabela, rede).
 
 ```
 index.html, css/style.css     Página e estilos da interface
+build.mjs → dist/skyhoop.html  Versão em arquivo HTML único (abre sem servidor)
 lib/three/                     Three.js (r170) + addon Reflector
 src/
   main.js                      Ponto de entrada
