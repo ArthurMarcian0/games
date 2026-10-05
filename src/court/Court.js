@@ -239,7 +239,7 @@ export class Court {
       this.reflector = new Reflector(geo, {
         textureWidth: Math.floor(size.x * 0.5),
         textureHeight: Math.floor(size.y * 0.5),
-        color: 0x777777,
+        color: 0x9a9a9a,
         clipBias: 0.003,
       });
       this.reflector.rotation.x = -Math.PI / 2;
@@ -248,7 +248,7 @@ export class Court {
     }
     if (this.reflector) this.reflector.visible = enabled;
     this.floorMaterial.transparent = enabled;
-    this.floorMaterial.opacity = enabled ? 0.84 : 1;
+    this.floorMaterial.opacity = enabled ? 0.88 : 1;
     this.floorMaterial.needsUpdate = true;
   }
 

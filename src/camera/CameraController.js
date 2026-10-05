@@ -74,9 +74,9 @@ export class CameraController {
       lookRate = 4;
     } else if (this.mode === 'broadcast') {
       const ball = ctx.ball ? ctx.ball.pos : new THREE.Vector3();
-      desiredPos.set(clamp(ball.x * 0.72, -9, 9), 8.6, 16.8);
-      desiredLook.set(ball.x * 0.88, 0.6, ball.z * 0.3);
-      fov = 42;
+      desiredPos.set(clamp(ball.x * 0.7, -8.5, 8.5), 12.5, 17.5);
+      desiredLook.set(ball.x * 0.85, 0.2, ball.z * 0.3 - 0.8);
+      fov = 40;
       posRate = 3;
       lookRate = 4;
     } else if (this.mode === 'follow' && ctx.player) {

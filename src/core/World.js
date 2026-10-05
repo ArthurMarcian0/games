@@ -234,7 +234,7 @@ export class World {
         hand.addScaledVector(p.forward, 0.18);
         if (hand.distanceTo(ball.pos) < 0.42) {
           p.blockRolled.add(ball.shotInfo);
-          const chanceBlock = 0.18 + 0.25 * p.attr('defense');
+          const chanceBlock = 0.1 + 0.2 * p.attr('defense');
           if (chance(chanceBlock)) this.applyBlock(p, ball.shotInfo.shooter);
         }
       }

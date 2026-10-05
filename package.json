@@ -1,0 +1,11 @@
+{
+  "name": "skyhoop-arena",
+  "version": "0.1.0",
+  "description": "Jogo de basquete 3D estilizado (Three.js) — protótipo jogável",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node server.mjs 8080"
+  },
+  "license": "MIT"
+}

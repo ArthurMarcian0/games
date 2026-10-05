@@ -69,7 +69,7 @@ export function contestLevel(shooter, opponents, basket) {
 export function computeJumpShot({ from, rim, meter, skill, contest, fatigue, extraSigma = 0, isFreeThrow = false }) {
   const d = Math.hypot(rim.x - from.x, rim.z - from.z);
   const timing = classifyTiming(meter);
-  let sigma = 0.03 + 0.024 * Math.max(0, d - 2) + (1 - skill) * 0.18 + contest * 0.17 + fatigue * 0.08 + extraSigma;
+  let sigma = 0.03 + 0.024 * Math.max(0, d - 2) + (1 - skill) * 0.18 + contest * 0.14 + fatigue * 0.08 + extraSigma;
   let longErr;
   if (timing.grade === 'perfect') {
     sigma *= 0.35;
@@ -94,7 +94,7 @@ export function computeJumpShot({ from, rim, meter, skill, contest, fatigue, ext
 }
 
 export function computeLayup({ from, rim, side, skill, contest }) {
-  const sigma = 0.028 + (1 - skill) * 0.12 + contest * 0.1;
+  const sigma = 0.028 + (1 - skill) * 0.12 + contest * 0.16;
   const dir = new THREE.Vector3(rim.x - from.x, 0, rim.z - from.z).normalize();
   const perp = new THREE.Vector3(-dir.z, 0, dir.x);
   // mira levemente no fundo do aro (mais próxima da tabela)

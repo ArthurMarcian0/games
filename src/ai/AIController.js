@@ -167,7 +167,7 @@ export class AIController {
     else if (!three) prob = 0.36 + 0.35 * (p.attr('shooting') - 0.6) - (d - 3.2) * 0.02;
     else prob = 0.3 + 0.5 * (p.attr('three') - 0.6) - Math.max(0, d - 7.4) * 0.09;
     const contest = clamp(1 - (nd - 0.7) / 2.3, 0, 1);
-    prob *= 1 - 0.5 * contest;
+    prob *= 1 - 0.6 * contest;
     prob = clamp(prob, 0.02, 0.95);
     return { prob, value: prob * (three ? 3 : 2), d, three, nd };
   }
@@ -207,7 +207,8 @@ export class AIController {
       const gameClock = rules.clock != null ? rules.clock : 99;
       const urgent = (sc < 3.2 || gameClock < 2.5) && !rules.training;
       const urgency = clamp((14 - sc) / 14, 0, 1);
-      const threshold = 0.8 - urgency * 0.35 + (1 - prof.decision) * gauss() * 0.3;
+      const shooterBonus = this.mode === 'probe' ? Math.max(0, p.attr('three') - 0.72) * 0.7 : 0;
+      const threshold = 0.8 - urgency * 0.35 - shooterBonus + (1 - prof.decision) * gauss() * 0.3;
 
       if (urgent && est.d < 13) {
         this.startShot(p);
@@ -238,7 +239,7 @@ export class AIController {
       if (this.holdTime > 0.6) {
         const bp = this.bestPass(p);
         if (bp) {
-          const better = bp.value > est.value + 0.4 && this.holdTime > 1.0;
+          const better = bp.value > est.value + 0.25 && this.holdTime > 0.9;
           const pressured = est.nd < 1.0 && chance(0.35);
           const stale = this.holdTime > 4.5;
           if ((better && chance(0.35 + 0.4 * prof.decision)) || pressured || stale) {
@@ -251,7 +252,7 @@ export class AIController {
       // escolha de movimento
       if (this.modeTimer <= 0) {
         this.modeTimer = rand(1.2, 2.6);
-        this.mode = chance(0.6) ? 'drive' : 'probe';
+        this.mode = chance(0.45) ? 'drive' : 'probe';
         this.driveSide = chance(0.5) ? -1 : 1;
       }
       // drible especial quando o marcador está colado à frente
