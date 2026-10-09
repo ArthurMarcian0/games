@@ -75,6 +75,7 @@
         </div>
         <nav class="menu-list">
           <button data-action="play" class="primary">Jogar</button>
+          <button data-action="campaign">Campanha<small>Terra Arrasada • domine as quadras em ruínas</small></button>
           <button data-action="training">Treinamento</button>
           <button data-action="customize">Personalizar jogador</button>
           <button data-action="settings">Configurações</button>
@@ -90,6 +91,7 @@
         <nav class="menu-list">
           <button data-action="quick" class="primary">Partida rápida<small>3x3 • times aleatórios • dificuldade padrão</small></button>
           <button data-action="versus">Jogo contra IA<small>escolha times, dificuldade e duração</small></button>
+          <button data-action="campaign">Campanha<small>8 quadras pós-apocalípticas, cada vez mais difíceis</small></button>
           <button data-action="back">Voltar</button>
         </nav>
       </div>
@@ -130,14 +132,37 @@
             </div>
             <div class="opt">
               <label>Quadra</label>
-              <div class="seg" id="setupCourt">
-                <button data-v="arena">Arena Central</button><button data-v="classic">Ginásio Clássico</button>
-              </div>
+              <div class="seg" id="setupCourt"></div>
+              <div class="note small-note" id="setupCourtNote"></div>
             </div>
           </div>
           <div class="panel-actions">
             <button data-action="back">Voltar</button>
             <button data-action="start" class="primary">Iniciar partida</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Campanha -->
+      <div id="campaignMenu" class="screen panel-screen camp-screen">
+        <div class="panel wide camp-panel">
+          <div class="camp-head">
+            <div>
+              <div class="camp-kicker">CAMPANHA</div>
+              <h2 id="campTitle">Terra Arrasada</h2>
+            </div>
+            <div id="campProgress" class="camp-progress"></div>
+          </div>
+          <p id="campIntro" class="camp-intro"></p>
+          <div class="camp-body">
+            <ol id="campStages" class="camp-stages"></ol>
+            <div id="campDetail" class="camp-detail"></div>
+          </div>
+          <div class="panel-actions">
+            <button data-action="reset" id="campReset" class="ghost">Reiniciar campanha</button>
+            <span class="spacer"></span>
+            <button data-action="back">Voltar</button>
+            <button data-action="playStage" class="primary" id="campPlay">Jogar fase</button>
           </div>
         </div>
       </div>
@@ -207,13 +232,25 @@
             <tr><td>Bandeja / Enterrada</td><td>Espaço perto da cesta (correndo = enterrada)</td><td>A</td></tr>
             <tr><td>Finta de arremesso</td><td>Toque rápido em Espaço</td><td>Toque em A</td></tr>
             <tr><td>Passar</td><td>E / J (+ direção)</td><td>X</td></tr>
-            <tr><td>Drible especial (crossover)</td><td>X / U</td><td>B</td></tr>
+            <tr><td>Drible (varia com a direção, veja abaixo)</td><td>X / U</td><td>B</td></tr>
+            <tr><td>Giro (spin move)</td><td>V / O</td><td>L3 / R3</td></tr>
             <tr><td>Roubar a bola (defesa)</td><td>E / J</td><td>X</td></tr>
             <tr><td>Pular / Bloquear (defesa)</td><td>Espaço / C</td><td>A / LB</td></tr>
             <tr><td>Trocar de jogador</td><td>Q / I</td><td>Y</td></tr>
             <tr><td>Pausar</td><td>Esc / P</td><td>Start</td></tr>
             <tr><td>Treino: defensor / lance livre / reposicionar</td><td>T / F / R</td><td>— / — / Select</td></tr>
           </table>
+          <table class="controls-table moves-table">
+            <tr><th>Drible</th><th>Como fazer</th><th>Para que serve</th></tr>
+            <tr><td>Crossover</td><td>X + lado (bola na outra mão)</td><td>troca de mão e corta para o lado</td></tr>
+            <tr><td>Por trás das costas</td><td>X + lado correndo (Shift)</td><td>troca de mão sem perder velocidade</td></tr>
+            <tr><td>Finta in-and-out</td><td>X + lado da mão da bola</td><td>finge a troca e sai para o mesmo lado</td></tr>
+            <tr><td>Entre as pernas</td><td>X parado</td><td>troca de mão protegendo a bola</td></tr>
+            <tr><td>Hesitação</td><td>X + frente</td><td>freia e arranca mais rápido</td></tr>
+            <tr><td>Step-back</td><td>X + trás</td><td>salta para trás e abre espaço para arremessar</td></tr>
+            <tr><td>Giro</td><td>V (+ lado)</td><td>gira de costas para o marcador; o mais forte para desequilibrar</td></tr>
+          </table>
+          <p class="note">Encadeie dribles em sequência para fazer <b>combos</b>: cada drible seguido aumenta a chance de desequilibrar o marcador.</p>
           <p class="note">Barra de arremesso: solte quando o preenchimento estiver na faixa <b class="green">verde</b> para máxima precisão. Distância, marcação e cansaço também influenciam.</p>
           <div class="panel-actions"><button data-action="back" class="primary">Voltar</button></div>
         </div>
@@ -238,10 +275,13 @@
         <div class="panel wide">
           <h1 id="goTitle">VITÓRIA!</h1>
           <div id="goScore" class="go-score"></div>
+          <div id="goCampaign" class="go-campaign hidden"></div>
           <div id="goBox" class="box-score"></div>
           <div class="panel-actions">
             <button data-action="menu">Menu principal</button>
+            <button data-action="map" class="hidden">Mapa da campanha</button>
             <button data-action="again" class="primary">Jogar novamente</button>
+            <button data-action="next" class="primary hidden">Próxima fase</button>
           </div>
         </div>
       </div>
@@ -282,6 +322,7 @@
       </div>
       <div id="messages"></div>
       <div id="pointsPopup"></div>
+      <div id="moveLabel"></div>
       <div id="hints" class="hidden"></div>
     </div>
     <div id="fade"></div>

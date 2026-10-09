@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { headingTo, distXZ } from '../core/MathUtils.js';
+import { chooseMove } from '../entities/DribbleMoves.js';
 
 const fwd = new THREE.Vector3();
 
@@ -18,7 +19,7 @@ export class HumanController {
       passTarget: null,
       steal: false,
       jump: false,
-      crossover: false,
+      dribbleMove: null,
       face: null,
       contest: false,
     };
@@ -54,7 +55,7 @@ export class HumanController {
     I.passTarget = null;
     I.steal = false;
     I.jump = false;
-    I.crossover = false;
+    I.dribbleMove = null;
     I.face = null;
     I.contest = false;
     p.stance = 'normal';
@@ -71,7 +72,26 @@ export class HumanController {
         I.pass = true;
         I.passTarget = this.passPreview;
       }
-      if (inp.wasPressed('crossover')) I.crossover = true;
+      const spin = inp.wasPressed('spin');
+      if (spin || inp.wasPressed('crossover')) {
+        // a direção na tela escolhe o drible (frente/trás/lados); o lado é
+        // convertido para o corpo do atleta para saber qual mão fica com a bola
+        const m = inp.getMove();
+        this.camera.getWorldDirection(fwd);
+        const rx = -fwd.z;
+        const rz = fwd.x;
+        const r = p.right;
+        const bodySide = rx * r.x + rz * r.z;
+        I.dribbleMove = chooseMove({
+          fwd: m.y,
+          side: m.x * (bodySide < -0.3 ? -1 : 1),
+          hand: p.dribbleHand,
+          sprint: I.sprint,
+          spin,
+        });
+        // step-back sai na direção pedida, de frente para a quadra
+        if (I.dribbleMove.kind === 'stepback') I.dribbleMove.push = { x: mv.x, z: mv.z };
+      }
     } else {
       if (inp.wasPressed('pass')) I.steal = true;
       if (inp.wasPressed('action') || inp.wasPressed('jump')) I.jump = true;

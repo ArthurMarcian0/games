@@ -282,6 +282,8 @@ export class CharacterModel {
 
   dispose() {
     this.root.traverse((o) => {
+      // geometrias são únicas por modelo; materiais lisos ficam no cache compartilhado
+      if (o.isMesh && o.geometry) o.geometry.dispose();
       if (o.isMesh && o.material && o.material.map) {
         o.material.map.dispose();
         o.material.dispose();

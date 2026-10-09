@@ -39,7 +39,8 @@ npm run build        # gera index.html a partir de dev.html + src/
 | Bandeja / enterrada | Espaço perto da cesta (correndo = enterrada) | A |
 | Finta de arremesso | Toque rápido em Espaço | Toque em A |
 | Passar (na direção do movimento) | E / J | X |
-| Drible especial (crossover) | X / U | B |
+| Drible (varia com a direção, veja abaixo) | X / U | B |
+| Giro (spin move) | V / O | L3 / R3 |
 | Roubar a bola (defesa) | E / J | X |
 | Pular / bloquear (defesa) | Espaço / C | A / LB |
 | Trocar de jogador | Q / I | Y |
@@ -51,6 +52,51 @@ npm run build        # gera index.html a partir de dev.html + src/
 verde para uma soltura **perfeita**; a faixa amarela é boa; fora dela o
 arremesso sai curto ou longo. Distância, marcação, cansaço e atributos também
 influenciam. A física da bola decide o resultado (aro, tabela, rede).
+
+### Dribles
+
+O drible feito com **X** depende da direção que você segura na hora:
+
+| Drible | Como fazer | Efeito |
+| --- | --- | --- |
+| Crossover | X + lado (bola na outra mão) | troca de mão e corta para o lado |
+| Por trás das costas | X + lado correndo (Shift) | troca de mão sem perder velocidade |
+| Finta in-and-out | X + lado da mão que está com a bola | finge a troca e sai para o mesmo lado |
+| Entre as pernas | X parado | troca de mão protegendo a bola |
+| Hesitação | X + frente | freia e arranca mais rápido |
+| Step-back | X + trás | salta para trás e abre espaço para o arremesso |
+| Giro | V (+ lado) | gira de costas para o marcador; o que mais desequilibra |
+
+Dribles feitos em sequência formam **combos** (mostrados na tela): cada drible
+encadeado aumenta a chance de desequilibrar o marcador. Cada movimento também
+protege a bola de forma diferente contra roubos e gasta um pouco de energia.
+A IA usa os mesmos dribles (inclusive step-back seguido de arremesso).
+
+## Campanha: Terra Arrasada
+
+Depois do colapso, as gangues disputam as últimas quadras de pé. Você lidera os
+**Errantes** e precisa dominar 8 quadras pós-apocalípticas, uma por vez:
+
+| Fase | Quadra | Gangue | Formato | Regra especial |
+| --- | --- | --- | --- | --- |
+| 1 | Pátio do Ferro-Velho | Os Catadores | 2x2 | — |
+| 2 | Viaduto Desabado | Ratos do Asfalto | 3x3 | — |
+| 3 | Porto Enferrujado | Maré Negra | 3x3 | piso molhado (menos aderência) |
+| 4 | Zona Química | Os Contaminados | 3x3 | ar tóxico (energia acaba mais rápido) |
+| 5 | Cidade Cinza | Legião das Cinzas | 4x4 | — |
+| 6 | Usina Fantasma | Os Faíscas | 4x4 | noite, só holofotes |
+| 7 | Deserto de Vidro | Nômades da Tempestade | 5x5 | vento desvia a bola, areia no piso |
+| 8 | A Cidadela | Os Soberanos | 5x5 | torcida hostil (arremessos menos precisos) |
+
+- **Dificuldade crescente:** a IA adversária vai de "fácil" na primeira fase até
+  um nível "elite" (acima do difícil) na última, e os atributos das gangues sobem
+  a cada quadra. Seus companheiros também melhoram conforme você avança.
+- **Estrelas:** vencer dá 1 estrela; vencer por 5+ pontos dá 2; por 10+, 3.
+- **Recompensas:** a primeira vitória em cada quadra dá pontos de atributo
+  permanentes ao seu jogador (aparecem em "Personalizar jogador") e libera a
+  próxima fase. Quadras dominadas ficam disponíveis no "Jogo contra IA".
+- O progresso fica salvo no navegador; o mapa da campanha tem a opção de
+  reiniciar.
 
 ## Funcionalidades
 
@@ -87,7 +133,8 @@ influenciam. A física da bola decide o resultado (aro, tabela, rede).
   apito, buzina, torcida (ambiente, vibração e palmas), efeitos de pontuação e
   músicas de menu e de partida.
 - **Modos:** Partida rápida, Jogo contra IA (times, dificuldade, 1x1 a 5x5,
-  duração, quadra) e Treinamento (estatísticas, defensor opcional, lances livres).
+  duração, quadra), Campanha (8 quadras pós-apocalípticas) e Treinamento
+  (estatísticas, defensor opcional, lances livres).
 - **Configurações:** dificuldade, câmera, qualidade gráfica (baixa/média/alta com
   reflexos no piso), volumes, dicas e troca automática de jogador.
 
@@ -104,8 +151,12 @@ src/
   config/    Constants (medidas oficiais), Settings (persistência), Difficulty
   data/      Teams (times/elencos fictícios), PlayerProfile (jogador criado + progressão)
   court/     Court (piso e marcações), Hoop (tabela/aro/rede), Arena (público,
-             placar, luzes, decoração), CourtThemes (quadras)
-  entities/  Player (atleta), CharacterModel (modelo 3D), Animator (animações), Ball
+             placar, luzes, decoração), Wasteland (cenário pós-apocalíptico),
+             Crowd (público instanciado), CourtThemes (quadras)
+  campaign/  CampaignData (fases, gangues, modificadores, recompensas),
+             CampaignProgress (progresso salvo)
+  entities/  Player (atleta), CharacterModel (modelo 3D), Animator (animações), Ball,
+             DribbleMoves (catálogo de dribles)
   physics/   BallPhysics (colisões e cesta), ShotCalculator (trajetória e precisão)
   controls/  InputManager (teclado/controle), HumanController
   ai/        TeamAI (coordenação coletiva), AIController (decisões individuais)
@@ -113,7 +164,7 @@ src/
   rules/     MatchRules (regras), TrainingRules, ScoreSystem, Formations
   audio/     AudioManager (efeitos), MusicPlayer (música procedural)
   ui/        HUD, Menus
-  modes/     GameMode (base), MatchMode, TrainingMode, ModeRegistry
+  modes/     GameMode (base), MatchMode, TrainingMode, CampaignMode, ModeRegistry
   fx/        Particles
 ```
 
@@ -127,5 +178,9 @@ src/
   em `modes/ModeRegistry.js`.
 - **Criação de jogador e evolução de atributos:** `data/PlayerProfile.js` já tem
   `level`, `xp` e `bonusAttrs`, somados aos atributos do arquétipo.
-- **Diferentes quadras:** adicione um tema em `court/CourtThemes.js`.
+- **Diferentes quadras:** adicione um tema em `court/CourtThemes.js` (com
+  `venue: 'wasteland'` para usar o cenário pós-apocalíptico).
+- **Novas fases da campanha:** adicione uma entrada em `campaign/CampaignData.js`.
+- **Novos dribles:** adicione o movimento em `entities/DribbleMoves.js` e a pose
+  em `Animator.dribbleMovePose`.
 - **Diferentes equipes:** adicione entradas em `data/Teams.js`.

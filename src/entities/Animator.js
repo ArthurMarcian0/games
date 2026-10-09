@@ -248,29 +248,9 @@ export class Animator {
         T.lShZ = 0.2;
         break;
       }
-      case 'crossover': {
-        this.rate = 22;
-        const d = s.actionData || {};
-        const k = clamp(t / 0.36, 0, 1);
-        const from = d.fromHand || 1;
-        const side = from * (1 - 2 * k);
-        T.rootY = -0.16;
-        T.spinePitch = 0.35;
-        T.spineRoll = side * 0.18;
-        T.lKneeX = 0.85;
-        T.rKneeX = 0.85;
-        T.lLegX = -0.35;
-        T.rLegX = -0.35;
-        T.lLegZ = 0.3;
-        T.rLegZ = -0.3;
-        T.rShX = -0.6;
-        T.lShX = -0.6;
-        T.rElX = -0.7;
-        T.lElX = -0.7;
-        T.rShZ = -0.25 - 0.3 * Math.max(0, -side);
-        T.lShZ = 0.25 + 0.3 * Math.max(0, side);
+      case 'dribbleMove':
+        this.dribbleMovePose(T, s, t);
         break;
-      }
       case 'stumble': {
         this.rate = 12;
         T.spineRoll = Math.sin(t * 9) * 0.25;
@@ -341,6 +321,158 @@ export class Animator {
     const rate = this.rate;
     for (const k of KEYS) C[k] = damp(C[k], T[k], rate, dt);
     this.apply();
+  }
+
+  // Poses dos dribles (o atleta é visto de frente: x > 0 = esquerda dele)
+  dribbleMovePose(T, s, t) {
+    const d = s.actionData || {};
+    const kind = d.kind || 'crossover';
+    const from = d.fromHand || 1;
+    const to = d.toHand || -from;
+    const air = !s.onGround;
+    const hand = (h) => (h > 0 ? 'r' : 'l');
+    const zs = (h) => (h > 0 ? -1 : 1); // sinal de abertura do ombro
+    const low = () => {
+      T.rootY = -0.16;
+      T.spinePitch = 0.35;
+      T.lKneeX = 0.85;
+      T.rKneeX = 0.85;
+      T.lLegX = -0.35;
+      T.rLegX = -0.35;
+      T.lLegZ = 0.3;
+      T.rLegZ = -0.3;
+      T.rShX = -0.6;
+      T.lShX = -0.6;
+      T.rElX = -0.7;
+      T.lElX = -0.7;
+    };
+    switch (kind) {
+      case 'crossover':
+      case 'inOut': {
+        this.rate = 22;
+        low();
+        const k = clamp(t / 0.36, 0, 1);
+        const side = kind === 'crossover' ? from * (1 - 2 * k) : from * (1 - 1.6 * Math.sin(Math.PI * k));
+        T.spineRoll = side * 0.18;
+        T.hipsRoll = -side * 0.06;
+        T.rShZ = -0.25 - 0.3 * Math.max(0, -side);
+        T.lShZ = 0.25 + 0.3 * Math.max(0, side);
+        T.headYaw = side * 0.15;
+        break;
+      }
+      case 'behindBack': {
+        this.rate = 20;
+        low();
+        T.spinePitch = 0.22;
+        const k = clamp(t / 0.4, 0, 1);
+        const H = hand(from);
+        // braço da bola vai para trás do quadril
+        T[H + 'ShX'] = 0.4 + 0.5 * Math.sin(Math.PI * k);
+        T[H + 'ShZ'] = zs(from) * (0.35 + 0.3 * Math.sin(Math.PI * k));
+        T[H + 'ElX'] = -0.6;
+        T.spineYaw = from * 0.25 * Math.sin(Math.PI * k);
+        T.lLegX = -0.45 + Math.sin(this.phase) * 0.3;
+        T.rLegX = -0.45 - Math.sin(this.phase) * 0.3;
+        break;
+      }
+      case 'betweenLegs': {
+        this.rate = 20;
+        low();
+        // pé contrário à bola vai à frente, abrindo o espaço entre as pernas
+        const L = hand(-from) === 'r' ? 'r' : 'l';
+        const B = L === 'r' ? 'l' : 'r';
+        T[L + 'LegX'] = -0.75;
+        T[L + 'KneeX'] = 0.9;
+        T[B + 'LegX'] = 0.25;
+        T[B + 'KneeX'] = 0.7;
+        T.lLegZ = 0.38;
+        T.rLegZ = -0.38;
+        T.rootY = -0.2;
+        T.spinePitch = 0.42;
+        T.headPitch = -0.35;
+        const k = clamp(t / 0.4, 0, 1);
+        T.rShX = -0.4 - 0.3 * Math.sin(Math.PI * k);
+        T.lShX = -0.4 - 0.3 * Math.sin(Math.PI * k);
+        break;
+      }
+      case 'spin': {
+        this.rate = 18;
+        const k = clamp(t / 0.56, 0, 1);
+        const H = hand(k < 0.75 ? from : to);
+        T.rootY = -0.14;
+        T.spinePitch = 0.25;
+        T.lKneeX = 0.7;
+        T.rKneeX = 0.7;
+        // pé de pivô fixo, perna livre aberta para girar
+        T.lLegX = -0.3;
+        T.rLegX = -0.3;
+        T.lLegZ = 0.25 + 0.35 * Math.sin(Math.PI * k);
+        T.rLegZ = -0.25 - 0.35 * Math.sin(Math.PI * k);
+        T[H + 'ShX'] = -0.9;
+        T[H + 'ShZ'] = zs(H === 'r' ? 1 : -1) * 0.9;
+        T[H + 'ElX'] = -0.5;
+        const O = H === 'r' ? 'l' : 'r';
+        T[O + 'ShX'] = -0.8;
+        T[O + 'ShZ'] = -zs(H === 'r' ? 1 : -1) * 0.7;
+        T[O + 'ElX'] = -1.1;
+        T.headYaw = 0;
+        break;
+      }
+      case 'hesitation': {
+        const burst = d.burst;
+        this.rate = burst ? 22 : 14;
+        if (!burst) {
+          // corpo sobe, como se fosse parar ou arremessar
+          T.rootY = -0.02;
+          T.spinePitch = -0.04;
+          T.headPitch = -0.15;
+          T.lKneeX = 0.2;
+          T.rKneeX = 0.2;
+          const H = hand(from);
+          T[H + 'ShX'] = -1.1;
+          T[H + 'ShZ'] = zs(from) * 0.2;
+          T[H + 'ElX'] = -1.3;
+          const O = H === 'r' ? 'l' : 'r';
+          T[O + 'ShX'] = -0.7;
+          T[O + 'ElX'] = -1.2;
+        } else {
+          // arrancada: corpo baixo e projetado para frente
+          T.rootY = -0.14;
+          T.spinePitch = 0.5;
+          T.lLegX = -Math.sin(this.phase) * 0.9;
+          T.rLegX = Math.sin(this.phase) * 0.9;
+          T.lKneeX = 0.4 + Math.max(0, Math.cos(this.phase)) * 1.3;
+          T.rKneeX = 0.4 + Math.max(0, -Math.cos(this.phase)) * 1.3;
+          T.lShX = Math.sin(this.phase) * 0.8;
+          T.rShX = -0.6;
+          T.rElX = -0.9;
+          T.lElX = -1.2;
+        }
+        break;
+      }
+      case 'stepback': {
+        this.rate = 20;
+        T.rootY = air ? -0.04 : -0.15;
+        T.spinePitch = 0.1;
+        T.lLegX = air ? 0.2 : -0.3;
+        T.rLegX = air ? -0.5 : -0.3;
+        T.lKneeX = air ? 0.6 : 0.8;
+        T.rKneeX = air ? 0.4 : 0.8;
+        T.lFootX = air ? 0.3 : 0;
+        T.rFootX = air ? 0.3 : 0;
+        // bola recolhida, pronta para o arremesso
+        T.rShX = -1.2;
+        T.lShX = -1.15;
+        T.rShZ = -0.25;
+        T.lShZ = 0.3;
+        T.rElX = -1.2;
+        T.lElX = -1.25;
+        T.headPitch = -0.1;
+        break;
+      }
+      default:
+        break;
+    }
   }
 
   apply() {

@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { Settings } from '../config/Settings.js';
 import { loadProfile, saveProfile, profileToPlayerData } from '../data/PlayerProfile.js';
 import { TEAMS } from '../data/Teams.js';
+import { loadCampaign } from '../campaign/CampaignProgress.js';
 import { Court } from '../court/Court.js';
+import { Wasteland } from '../court/Wasteland.js';
 import { Arena } from '../court/Arena.js';
 import { getTheme } from '../court/CourtThemes.js';
 import { CameraController } from '../camera/CameraController.js';
@@ -24,6 +26,28 @@ const QUALITY = {
   high: { pixelRatio: 2, shadows: true, shadowSize: 2048, reflections: true, env: true },
 };
 
+function disposeTree(root) {
+  const seen = new Set();
+  root.traverse((o) => {
+    if (o.geometry && !seen.has(o.geometry)) {
+      seen.add(o.geometry);
+      o.geometry.dispose();
+    }
+    const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
+    for (const m of mats) {
+      if (seen.has(m)) continue;
+      seen.add(m);
+      if (m.map && !seen.has(m.map)) {
+        seen.add(m.map);
+        m.map.dispose();
+      }
+      m.dispose();
+    }
+    if (o.isLight && o.shadow && o.shadow.map) o.shadow.map.dispose();
+    if (o.getRenderTarget) o.getRenderTarget().dispose();
+  });
+}
+
 /**
  * Núcleo do jogo: renderizador, cena, ciclo principal, estados
  * (menu, jogando, pausado, personalização, fim de jogo) e ligação entre sistemas.
@@ -33,6 +57,7 @@ export class Game {
     this.options = options;
     this.settings = new Settings();
     this.profile = loadProfile();
+    this.campaign = loadCampaign();
     this.state = 'loading';
     this.mode = null;
     this.modeId = null;
@@ -97,10 +122,22 @@ export class Game {
   // ------------------------------------------------------------------
   buildVenue() {
     const theme = getTheme(this.themeId);
-    if (this.court) this.scene.remove(this.court.group);
-    if (this.arena) this.scene.remove(this.arena.group);
+    // libera a quadra anterior da memória de vídeo (a campanha troca de cenário a cada fase)
+    for (const old of [this.court, this.arena]) {
+      if (!old) continue;
+      this.scene.remove(old.group);
+      disposeTree(old.group);
+    }
     this.court = new Court(this.scene, theme);
-    this.arena = new Arena(this.scene, theme, this.settings.get('quality'));
+    // cada tema escolhe o cenário: arena coberta ou quadra pós-apocalíptica
+    const Venue = theme.venue === 'wasteland' ? Wasteland : Arena;
+    this.arena = new Venue(this.scene, theme, this.settings.get('quality'));
+    const fog = theme.env && theme.env.fog;
+    this.scene.fog = fog ? new THREE.Fog(fog[0], fog[1], fog[2]) : new THREE.Fog(0x06080d, 45, 95);
+    this.scene.background = new THREE.Color(fog ? fog[0] : 0x06080d);
+    this.camera.far = fog ? 320 : 220;
+    this.camera.updateProjectionMatrix();
+    if (this.envMap) this.envMap.dispose();
     this.envMap = null;
   }
 
@@ -219,7 +256,7 @@ export class Game {
     if (this.modeId) this.startMode(this.modeId, this.modeConfig);
   }
 
-  quitToMenu() {
+  quitToMenu(screen = 'mainMenu') {
     this.menus.hideAll();
     this.hud.fade(() => {
       if (this.themeId !== 'arena') {
@@ -230,6 +267,7 @@ export class Game {
       }
       this.startDemo();
       this.menus.show('mainMenu', false);
+      if (screen === 'campaignMenu') this.menus.openCampaign();
       this.music.play('menu');
     });
   }
@@ -328,6 +366,10 @@ export class Game {
     });
     on('steal', ({ player }) => {
       A.cheer(player.team === 0 ? 0.5 : 0.2);
+    });
+    on('dribbleMove', ({ player, label, combo }) => {
+      A.playAt('whoosh', player.pos, { volume: 0.18 + combo * 0.05, rate: 1.5 + combo * 0.1 });
+      if (!demo && player.isHuman) this.hud.moveLabel(label, combo);
     });
     on('ankleBreaker', ({ player, victim }) => {
       if (!demo) this.hud.message('DESEQUILIBROU!', `${player.name} deixou ${victim.name} no chão`, 'steal', 1.3);

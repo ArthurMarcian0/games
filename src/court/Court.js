@@ -35,8 +35,13 @@ export class Court {
     canvas.width = FLOOR_W * PPM;
     canvas.height = FLOOR_D * PPM;
     const ctx = canvas.getContext('2d');
-    this.drawWood(ctx, canvas.width, canvas.height);
+    const concrete = this.theme.floor === 'concrete';
+    if (concrete) this.drawConcrete(ctx, canvas.width, canvas.height);
+    else this.drawWood(ctx, canvas.width, canvas.height);
+    if (concrete) ctx.globalAlpha = this.theme.lineAlpha ?? 0.8;
     this.drawMarkings(ctx);
+    ctx.globalAlpha = 1;
+    if (concrete) this.drawWear(ctx, canvas.width, canvas.height);
 
     const tex = new THREE.CanvasTexture(canvas);
     tex.colorSpace = THREE.SRGBColorSpace;
@@ -45,9 +50,9 @@ export class Court {
 
     this.floorMaterial = new THREE.MeshStandardMaterial({
       map: tex,
-      roughness: 0.28,
+      roughness: this.theme.floorRoughness ?? 0.28,
       metalness: 0.0,
-      envMapIntensity: 0.55,
+      envMapIntensity: concrete ? 0.15 : 0.55,
     });
     const geo = new THREE.PlaneGeometry(FLOOR_W, FLOOR_D);
     geo.rotateX(-Math.PI / 2);
@@ -97,6 +102,119 @@ export class Court {
     ctx.fillRect(0, z0, x0, z1 - z0);
     ctx.fillRect(x1, z0, w - x1, z1 - z0);
     ctx.globalAlpha = 1;
+  }
+
+  // Quadra de concreto (cenários pós-apocalípticos): placas de concreto,
+  // manchas e a área externa de terra/asfalto
+  drawConcrete(ctx, w, h) {
+    const t = this.theme;
+    const [r0, g0, b0] = t.concreteBase || [120, 118, 112];
+    let seed = t.seed || 7;
+    const rnd = () => {
+      seed = (seed * 16807) % 2147483647;
+      return seed / 2147483647;
+    };
+    this.rnd = rnd;
+    ctx.fillStyle = `rgb(${r0},${g0},${b0})`;
+    ctx.fillRect(0, 0, w, h);
+    // placas com leve variação de tom
+    const slab = 3 * PPM;
+    for (let y = 0; y < h; y += slab) {
+      for (let x = 0; x < w; x += slab) {
+        const d = (rnd() - 0.5) * 22;
+        ctx.fillStyle = `rgba(${r0 + d},${g0 + d},${b0 + d * 0.9},0.9)`;
+        ctx.fillRect(x, y, slab, slab);
+        ctx.fillStyle = 'rgba(20,18,16,0.35)';
+        ctx.fillRect(x, y, slab, 2);
+        ctx.fillRect(x, y, 2, slab);
+      }
+    }
+    // granulado
+    for (let i = 0; i < 26000; i++) {
+      const v = rnd() < 0.5 ? 0 : 255;
+      ctx.fillStyle = `rgba(${v},${v},${v},${0.04 + rnd() * 0.06})`;
+      ctx.fillRect(rnd() * w, rnd() * h, 1 + rnd() * 2, 1 + rnd() * 2);
+    }
+    // manchas de óleo, ferrugem e umidade
+    for (let i = 0; i < 40; i++) {
+      const x = rnd() * w;
+      const y = rnd() * h;
+      const r = (0.3 + rnd() * 1.6) * PPM;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      const col = t.stainColors ? t.stainColors[i % t.stainColors.length] : '30,24,18';
+      g.addColorStop(0, `rgba(${col},${0.25 + rnd() * 0.25})`);
+      g.addColorStop(1, `rgba(${col},0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(x, y, r, r * (0.5 + rnd() * 0.5), rnd() * 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // área externa: terra/asfalto
+    ctx.fillStyle = t.apron;
+    ctx.globalAlpha = 0.9;
+    const x0 = this.px(-COURT.halfL - 1.2);
+    const x1 = this.px(COURT.halfL + 1.2);
+    const z0 = this.pz(-COURT.halfW - 1.2);
+    const z1 = this.pz(COURT.halfW + 1.2);
+    ctx.fillRect(0, 0, w, z0);
+    ctx.fillRect(0, z1, w, h - z1);
+    ctx.fillRect(0, z0, x0, z1 - z0);
+    ctx.fillRect(x1, z0, w - x1, z1 - z0);
+    ctx.globalAlpha = 1;
+  }
+
+  // Rachaduras, tinta descascada e mato por cima das linhas
+  drawWear(ctx, w, h) {
+    const rnd = this.rnd;
+    const t = this.theme;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < (t.cracks ?? 34); i++) {
+      let x = rnd() * w;
+      let y = rnd() * h;
+      let a = rnd() * Math.PI * 2;
+      const n = 6 + Math.floor(rnd() * 14);
+      ctx.strokeStyle = `rgba(15,12,10,${0.55 + rnd() * 0.3})`;
+      ctx.lineWidth = 1 + rnd() * 3;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      for (let k = 0; k < n; k++) {
+        a += (rnd() - 0.5) * 1.1;
+        x += Math.cos(a) * (8 + rnd() * 26);
+        y += Math.sin(a) * (8 + rnd() * 26);
+        ctx.lineTo(x, y);
+        if (rnd() < 0.15) {
+          // ramificação
+          const bx = x + Math.cos(a + 1.2) * 20;
+          const by = y + Math.sin(a + 1.2) * 20;
+          ctx.moveTo(bx, by);
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.stroke();
+    }
+    // descascados: pequenas áreas onde a tinta das linhas sumiu
+    const [r0, g0, b0] = t.concreteBase || [120, 118, 112];
+    for (let i = 0; i < 500; i++) {
+      ctx.fillStyle = `rgba(${r0 - 10},${g0 - 10},${b0 - 10},${0.5 + rnd() * 0.5})`;
+      ctx.beginPath();
+      ctx.ellipse(rnd() * w, rnd() * h, 2 + rnd() * 9, 2 + rnd() * 5, rnd() * 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // tufos de mato nas rachaduras
+    if (t.weeds) {
+      for (let i = 0; i < 160; i++) {
+        const x = rnd() * w;
+        const y = rnd() * h;
+        for (let k = 0; k < 6; k++) {
+          ctx.strokeStyle = `rgba(${60 + rnd() * 40},${80 + rnd() * 50},${30 + rnd() * 20},0.85)`;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(x + (rnd() - 0.5) * 14, y + (rnd() - 0.5) * 14);
+          ctx.stroke();
+        }
+      }
+    }
   }
 
   drawMarkings(ctx) {
@@ -222,7 +340,9 @@ export class Court {
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = 'rgba(0,0,0,0.6)';
     ctx.lineWidth = 6;
-    ctx.font = `italic 900 ${0.55 * PPM}px Arial Black, Arial, sans-serif`;
+    // textos longos encolhem para caber no círculo central
+    const size = Math.min(0.55, 0.55 * (7 / Math.max(7, this.theme.centerText.length)));
+    ctx.font = `italic 900 ${size * PPM}px Arial Black, Arial, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.strokeText(this.theme.centerText, cx, cy);

@@ -16,6 +16,9 @@ export class World {
     this.events = new EventBus();
     this.ball = new Ball(this.scene);
     this.physics = new BallPhysics((type, data) => this.onBallEvent(type, data));
+    // modificadores de quadra (campanha): aderência do piso, desgaste de
+    // energia e erro extra nos arremessos do time da casa
+    this.mods = { grip: 1, drain: 1, homeShotSigma: 0 };
     this.players = [];
     this.teams = [
       { index: 0, def: null, players: [], attackSign: 1 },
@@ -109,7 +112,7 @@ export class World {
     if (ball.holder) {
       ball.pos.copy(ball.holder.ballAnchor);
       const h = ball.holder;
-      if (!h.action || h.action === 'crossover') {
+      if (!h.action || h.action === 'dribbleMove') {
         const r = h.right;
         ball.spin.set(r.x, 0, r.z).multiplyScalar(-6 - h.speed * 2);
       } else ball.spin.multiplyScalar(0.9);
@@ -205,7 +208,8 @@ export class World {
   }
 
   // Dribles fortes podem desequilibrar o marcador
-  checkAnkleBreaker(handler) {
+  // power: força do drible (ver DribbleMoves.js), já incluindo o combo
+  checkAnkleBreaker(handler, power = 1) {
     for (const o of this.opponents(handler.team)) {
       const d = distXZ(o.pos, handler.pos);
       if (d > 1.8 || o.action) continue;
@@ -214,8 +218,9 @@ export class World {
       if (dot < 0.3) continue;
       let p = 0.06 + 0.3 * handler.attr('speed') - 0.3 * o.attr('defense');
       if (o.controller && o.controller.stealSkill) p /= o.controller.stealSkill;
+      p *= power;
       if (o.isHuman) p *= 0.6;
-      if (chance(clamp(p, 0.04, 0.45))) {
+      if (chance(clamp(p, 0.03, 0.6))) {
         o.stumble(0.75);
         this.emit('ankleBreaker', { player: handler, victim: o });
       }

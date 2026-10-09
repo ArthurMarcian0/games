@@ -124,9 +124,12 @@ export function getRoster(team) {
   const used = new Set();
   const roster = ROSTER_ARCHETYPES.map((arch) => {
     let name;
-    do {
-      name = `${pick(FIRST)} ${pick(LAST)}`;
-    } while (used.has(name));
+    if (team.names && used.size < team.names.length) name = team.names[used.size];
+    else {
+      do {
+        name = `${pick(FIRST)} ${pick(LAST)}`;
+      } while (used.has(name));
+    }
     used.add(name);
     const number = pick(JERSEY_NUMBERS);
     return {

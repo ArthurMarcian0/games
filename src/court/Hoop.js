@@ -21,8 +21,9 @@ export class Hoop {
 
   build(theme) {
     const s = this.side;
-    const pad = new THREE.MeshStandardMaterial({ color: theme.padColor, roughness: 0.6 });
-    const steel = new THREE.MeshStandardMaterial({ color: 0x2b2f36, roughness: 0.4, metalness: 0.6 });
+    const ruin = theme.hoop || null; // variação pós-apocalíptica
+    const pad = new THREE.MeshStandardMaterial({ color: theme.padColor, roughness: ruin ? 0.95 : 0.6 });
+    const steel = new THREE.MeshStandardMaterial({ color: ruin ? ruin.steel || 0x5a3a24 : 0x2b2f36, roughness: ruin ? 0.85 : 0.4, metalness: ruin ? 0.35 : 0.6 });
     const white = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
 
     const add = (geo, mat, x, y, z, cast = true) => {
@@ -43,19 +44,22 @@ export class Hoop {
     brace.rotation.z = s * 0.38;
 
     // Tabela de vidro
-    const glass = new THREE.MeshStandardMaterial({
-      color: 0xe6f2ff,
-      roughness: 0.05,
-      metalness: 0.2,
-      transparent: true,
-      opacity: 0.28,
-      depthWrite: false,
-    });
+    const glass = ruin
+      ? new THREE.MeshStandardMaterial({ map: this.makeBoardTexture(ruin), roughness: 0.9, metalness: ruin.board === 'metal' ? 0.4 : 0 })
+      : new THREE.MeshStandardMaterial({
+          color: 0xe6f2ff,
+          roughness: 0.05,
+          metalness: 0.2,
+          transparent: true,
+          opacity: 0.28,
+          depthWrite: false,
+        });
     const boardY = (COURT.boardBottom + COURT.boardTop) / 2;
     const boardH = COURT.boardTop - COURT.boardBottom;
     const bx = s * (COURT.boardX + COURT.boardThick / 2);
-    const board = add(new THREE.BoxGeometry(COURT.boardThick, boardH, COURT.boardHalfW * 2), glass, bx, boardY, 0, false);
+    const board = add(new THREE.BoxGeometry(COURT.boardThick, boardH, COURT.boardHalfW * 2), glass, bx, boardY, 0, !!ruin);
     board.renderOrder = 2;
+    if (ruin) board.rotation.x = (s > 0 ? 1 : -1) * (ruin.tilt || 0);
 
     // Moldura e quadrado do arremesso
     const frameMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 });
@@ -68,16 +72,20 @@ export class Hoop {
     const lx = s * (COURT.boardX - 0.003);
     const lineGeoH = new THREE.BoxGeometry(0.004, 0.045, 0.59);
     const lineGeoV = new THREE.BoxGeometry(0.004, 0.45, 0.045);
-    add(lineGeoH, white, lx, 3.07, 0, false);
-    add(lineGeoH, white, lx, 3.52, 0, false);
-    add(lineGeoV, white, lx, 3.295, 0.295, false);
-    add(lineGeoV, white, lx, 3.295, -0.295, false);
+    if (!ruin) {
+      add(lineGeoH, white, lx, 3.07, 0, false);
+      add(lineGeoH, white, lx, 3.52, 0, false);
+      add(lineGeoV, white, lx, 3.295, 0.295, false);
+      add(lineGeoV, white, lx, 3.295, -0.295, false);
+    }
 
     // Suporte do aro
     add(new THREE.BoxGeometry(0.18, 0.06, 0.2), steel, s * 12.71, COURT.rimHeight - 0.02, 0);
 
     // Aro
-    const rimMat = new THREE.MeshStandardMaterial({ color: 0xff5a14, roughness: 0.35, metalness: 0.5, emissive: 0x2a0a00 });
+    const rimMat = ruin
+      ? new THREE.MeshStandardMaterial({ color: ruin.rim || 0xa8461c, roughness: 0.75, metalness: 0.5, emissive: 0x150500 })
+      : new THREE.MeshStandardMaterial({ color: 0xff5a14, roughness: 0.35, metalness: 0.5, emissive: 0x2a0a00 });
     const rimGeo = new THREE.TorusGeometry(COURT.rimRadius, COURT.rimTube, 8, 36);
     this.rim = new THREE.Mesh(rimGeo, rimMat);
     this.rim.rotation.x = Math.PI / 2;
@@ -85,11 +93,58 @@ export class Hoop {
     this.rim.castShadow = true;
     this.group.add(this.rim);
 
-    this.buildNet();
+    this.buildNet(ruin && ruin.chainNet);
     this.buildShotClock(s);
   }
 
-  buildNet() {
+  // Tabela improvisada: compensado ou chapa de metal com o quadrado pintado
+  makeBoardTexture(ruin) {
+    const c = document.createElement('canvas');
+    c.width = 256;
+    c.height = 160;
+    const ctx = c.getContext('2d');
+    const metal = ruin.board === 'metal';
+    ctx.fillStyle = metal ? '#6b6e70' : '#a07a4f';
+    ctx.fillRect(0, 0, 256, 160);
+    let seed = 3;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    if (metal) {
+      for (let x = 0; x < 256; x += 22) {
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        ctx.fillRect(x, 0, 3, 160);
+      }
+    } else {
+      for (let y = 0; y < 160; y += 3) {
+        ctx.fillStyle = `rgba(70,45,20,${0.05 + rnd() * 0.12})`;
+        ctx.fillRect(0, y, 256, 1 + rnd() * 2);
+      }
+    }
+    for (let i = 0; i < 18; i++) {
+      const x = rnd() * 256;
+      const y = rnd() * 160;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, 10 + rnd() * 30);
+      g.addColorStop(0, 'rgba(110,50,15,0.55)');
+      g.addColorStop(1, 'rgba(110,50,15,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, 256, 160);
+    }
+    ctx.strokeStyle = ruin.paint || '#f2efe6';
+    ctx.lineWidth = 6;
+    ctx.strokeRect(6, 6, 244, 148);
+    ctx.strokeRect(84, 66, 88, 72);
+    // parafusos
+    ctx.fillStyle = '#2a2a2a';
+    for (const [x, y] of [[14, 14], [242, 14], [14, 146], [242, 146]]) {
+      ctx.beginPath();
+      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
+  buildNet(chain = false) {
     this.netBase = [];
     for (let r = 0; r < NET_ROWS; r++) {
       const t = r / (NET_ROWS - 1);
@@ -116,7 +171,8 @@ export class Hoop {
     this.netPositions = new Float32Array(this.netBase.length * 3);
     geo.setAttribute('position', new THREE.BufferAttribute(this.netPositions, 3));
     geo.setIndex(idx);
-    this.net = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0xf5f5f5, transparent: true, opacity: 0.92 }));
+    const netColor = chain ? 0x9a9a92 : 0xf5f5f5;
+    this.net = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: netColor, transparent: true, opacity: 0.92 }));
     this.net.position.copy(this.rimCenter);
     this.net.frustumCulled = false;
     this.group.add(this.net);

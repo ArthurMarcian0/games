@@ -30,8 +30,8 @@ export class MatchMode extends GameMode {
     const cfg = this.config;
     const world = new World(g);
     this.world = world;
-    const home = getTeam(cfg.home);
-    let away = getTeam(cfg.away);
+    const home = cfg.homeTeam || getTeam(cfg.home);
+    let away = cfg.awayTeam || getTeam(cfg.away);
     if (away.id === home.id) away = TEAMS.find((t) => t.id !== home.id);
     world.teams[0].def = home;
     world.teams[1].def = away;
@@ -56,7 +56,7 @@ export class MatchMode extends GameMode {
     homeLineup.forEach((d) => world.addPlayer(d, 0, homeKit));
     getLineup(away, size).forEach((d) => world.addPlayer(d, 1, awayKit));
 
-    const diff = getDifficulty(cfg.difficulty);
+    const diff = cfg.awayProfile || getDifficulty(cfg.difficulty);
     this.difficulty = diff;
     this.teamAI = [new TeamAI(world, 0), new TeamAI(world, 1)];
     for (const p of world.teams[0].players) p.setController(new AIController(this.teamAI[0], cfg.demo ? diff : TEAMMATE_PROFILE));
@@ -68,7 +68,7 @@ export class MatchMode extends GameMode {
 
     this.rules = new MatchRules(
       world,
-      { quarterLength: (cfg.quarterLength || 2) * 60, introTime: cfg.demo ? 0.5 : 2.8 },
+      { quarterLength: (cfg.quarterLength || 2) * 60, quarters: cfg.quarters || 4, introTime: cfg.demo ? 0.5 : 2.8 },
       {
         transition: (fn) => g.transition(fn, cfg.demo),
         onGameOver: (res) => this.onGameOver(res),

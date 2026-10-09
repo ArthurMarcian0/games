@@ -44,6 +44,7 @@ export class HUD {
       meterLabel: $('#shotMeter .label'),
       messages: $('#messages'),
       popup: $('#pointsPopup'),
+      moveLabel: $('#moveLabel'),
       hints: $('#hints'),
       training: $('#trainingPanel'),
       fade: $('#fade'),
@@ -83,7 +84,8 @@ export class HUD {
     h.innerHTML = `
       <div><b>WASD</b> mover &nbsp; <b>Shift</b> correr</div>
       <div><b>Espaço</b> segurar/soltar: arremesso • bandeja • enterrada (correndo)</div>
-      <div><b>E</b> passe / roubo &nbsp; <b>X</b> drible especial &nbsp; <b>C</b> pular/toco</div>
+      <div><b>E</b> passe / roubo &nbsp; <b>C</b> pular/toco</div>
+      <div><b>X</b> drible: + lado crossover • + frente hesitação • + trás step-back • parado entre as pernas &nbsp; <b>V</b> giro</div>
       ${extra}
       <div class="muted"><b>H</b> ocultar dicas &nbsp; <b>Esc</b> pausa</div>`;
   }
@@ -193,6 +195,15 @@ export class HUD {
     this.el.messages.appendChild(box);
     while (this.el.messages.children.length > 3) this.el.messages.firstChild.remove();
     setTimeout(() => box.remove(), duration * 1000 + 50);
+  }
+
+  // Nome do drible executado pelo jogador (com contador de combo)
+  moveLabel(label, combo) {
+    const el = this.el.moveLabel;
+    el.innerHTML = `${label}${combo > 0 ? ` <b>COMBO x${combo + 1}</b>` : ''}`;
+    el.classList.remove('anim');
+    void el.offsetWidth;
+    el.classList.add('anim');
   }
 
   points(points, color, label) {
