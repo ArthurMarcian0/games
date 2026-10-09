@@ -1,5 +1,6 @@
 import { MatchMode } from './MatchMode.js';
 import { TrainingMode } from './TrainingMode.js';
+import { CampaignMode } from './CampaignMode.js';
 
 // Registro de modos. Para adicionar "Campeonato" ou "Multiplayer", crie a
 // classe do modo e registre aqui.
@@ -7,6 +8,7 @@ export const MODES = {
   quick: { label: 'Partida rápida', create: (game, cfg) => new MatchMode(game, cfg) },
   versus: { label: 'Jogo contra IA', create: (game, cfg) => new MatchMode(game, cfg) },
   training: { label: 'Treinamento', create: (game, cfg) => new TrainingMode(game, cfg) },
+  campaign: { label: 'Campanha', create: (game, cfg) => new CampaignMode(game, cfg) },
   demo: { label: 'Demonstração', create: (game, cfg) => new MatchMode(game, { ...cfg, demo: true }) },
   // championship: { label: 'Campeonato', create: ... }  (futuro)
   // online: { label: 'Multiplayer', create: ... }        (futuro)

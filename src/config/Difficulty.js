@@ -57,6 +57,48 @@ export const DIFFICULTY = {
   },
 };
 
+// Perfil de elite, usado apenas no fim da campanha
+export const ELITE = {
+  ...DIFFICULTY.hard,
+  id: 'elite',
+  label: 'Elite',
+  speed: 1.07,
+  reaction: 0.13,
+  shotTiming: 0.038,
+  stealRate: 0.06,
+  stealSkill: 1.22,
+  blockRate: 0.52,
+  contestDist: 2.6,
+  defenseGap: 0.95,
+  positionError: 0.12,
+  passError: 0.06,
+  decision: 0.96,
+  foulRate: 0.65,
+  interceptSkill: 1.15,
+};
+
+// Interpola um perfil de IA por um nível contínuo (0 = fácil … 1 = elite).
+// Usado pela campanha para que cada fase fique um pouco mais difícil.
+export function profileForTier(tier) {
+  const steps = [
+    [0, DIFFICULTY.easy],
+    [0.4, DIFFICULTY.normal],
+    [0.8, DIFFICULTY.hard],
+    [1, ELITE],
+  ];
+  const t = Math.max(0, Math.min(1, tier));
+  let i = 0;
+  while (i < steps.length - 2 && t > steps[i + 1][0]) i++;
+  const [t0, a] = steps[i];
+  const [t1, b] = steps[i + 1];
+  const k = (t - t0) / (t1 - t0);
+  const out = { id: `tier${Math.round(t * 100)}`, label: `Nível ${Math.round(t * 100)}` };
+  for (const key of Object.keys(DIFFICULTY.normal)) {
+    if (typeof a[key] === 'number') out[key] = a[key] + (b[key] - a[key]) * k;
+  }
+  return out;
+}
+
 // Perfil usado pelos companheiros de equipe controlados pela IA do jogador humano
 export const TEAMMATE_PROFILE = { ...DIFFICULTY.normal, id: 'teammate' };
 

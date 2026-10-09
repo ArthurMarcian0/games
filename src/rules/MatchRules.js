@@ -6,6 +6,7 @@ import { ScoreSystem } from './ScoreSystem.js';
 import { tipoffPositions, inboundPositions, freeThrowPositions, tallest } from './Formations.js';
 
 const QUARTER_NAMES = ['1º QUARTO', '2º QUARTO', '3º QUARTO', '4º QUARTO'];
+const HALF_NAMES = ['1º TEMPO', '2º TEMPO'];
 
 /**
  * Regras da partida: cronômetro, relógio de posse, posse de bola, pontuação,
@@ -18,7 +19,8 @@ export class MatchRules {
     this.hooks = hooks; // { transition(fn), onGameOver(result) }
     this.scoreSys = new ScoreSystem(world);
     this.quarterLength = config.quarterLength;
-    this.quarters = 4;
+    this.quarters = config.quarters || 4;
+    this.regulation = this.quarters; // 4 quartos ou 2 tempos
     this.quarter = 1;
     this.clock = this.quarterLength;
     this.shotClock = MATCH.shotClock;
@@ -569,7 +571,7 @@ export class MatchRules {
       return;
     }
     const overtime = this.quarter >= this.quarters;
-    const label = overtime ? 'EMPATE! PRORROGAÇÃO' : this.quarter === 2 ? 'INTERVALO' : `FIM DO ${QUARTER_NAMES[this.quarter - 1]}`;
+    const label = overtime ? 'EMPATE! PRORROGAÇÃO' : this.quarter === Math.floor(this.regulation / 2) ? 'INTERVALO' : `FIM DO ${this.periodName(this.quarter)}`;
     this.msg(label, `${this.teamName(0)} ${a} x ${b} ${this.teamName(1)}`, 'period', 2.4);
     w.emit('quarterEnd', { quarter: this.quarter });
     this.phase = 'break';
@@ -586,14 +588,19 @@ export class MatchRules {
     };
   }
 
+  periodName(q) {
+    return (this.regulation === 2 ? HALF_NAMES : QUARTER_NAMES)[q - 1];
+  }
+
   periodLabel() {
-    if (this.quarter > 4) return this.quarter === 5 ? 'PRORROGAÇÃO' : `PRORROGAÇÃO ${this.quarter - 4}`;
-    return QUARTER_NAMES[this.quarter - 1];
+    const R = this.regulation;
+    if (this.quarter > R) return this.quarter === R + 1 ? 'PRORROGAÇÃO' : `PRORROGAÇÃO ${this.quarter - R}`;
+    return this.periodName(this.quarter);
   }
 
   shortPeriod() {
-    if (this.quarter > 4) return `PR${this.quarter - 4}`;
-    return `${this.quarter}º Q`;
+    if (this.quarter > this.regulation) return `PR${this.quarter - this.regulation}`;
+    return this.regulation === 2 ? `${this.quarter}º T` : `${this.quarter}º Q`;
   }
 }
 

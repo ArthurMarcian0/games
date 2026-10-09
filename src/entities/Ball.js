@@ -135,5 +135,7 @@ export class Ball {
   dispose() {
     this.mesh.parent && this.mesh.parent.remove(this.mesh);
     this.mesh.geometry.dispose();
+    this.mesh.material.map.dispose();
+    this.mesh.material.dispose();
   }
 }

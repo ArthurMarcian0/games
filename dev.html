@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SkyHoop Arena</title>
+    <meta name="description" content="Jogo de basquete 3D estilizado feito com Three.js" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%2246%22 fill=%22%23f07a1a%22 stroke=%22%23221%22 stroke-width=%226%22/%3E%3Cpath d=%22M4 50h92M50 4v92M20 15c20 20 20 50 0 70M80 15c-20 20-20 50 0 70%22 fill=%22none%22 stroke=%22%23221%22 stroke-width=%225%22/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="css/style.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./lib/three/three.module.min.js",
+          "three/addons/": "./lib/three/addons/"
+        }
+      }
+    </script>
+    <script>
+      // Guarda de inicialização: em vez de deixar a tela parada em "Preparando a
+      // arena…", mostra o motivo quando o jogo não consegue iniciar.
+      (function () {
+        var shown = false;
+        function fail(msg) {
+          if (shown) return;
+          var el = document.getElementById('loading');
+          if (!el || !el.classList.contains('active')) return;
+          shown = true;
+          el.classList.add('failed');
+          el.querySelector('.loading-text').innerHTML = msg;
+        }
+        window.__bootFail = fail;
+        window.addEventListener('error', function (e) {
+          var t = e.target;
+          if (t && t.tagName === 'SCRIPT') {
+            fail(location.protocol === 'file:'
+              ? 'Este arquivo (dev.html) precisa de um servidor local.<br>Abra o <b>index.html</b> com duplo clique ou rode <code>npm start</code>.'
+              : 'Não foi possível carregar os scripts do jogo.');
+          } else {
+            fail('Erro ao iniciar o jogo:<br><code>' + String(e.message || e.error || 'desconhecido').replace(/</g, '&lt;') + '</code>');
+          }
+        }, true);
+        var c = document.createElement('canvas');
+        var gl = null;
+        try { gl = c.getContext('webgl2') || c.getContext('webgl'); } catch (err) {}
+        if (!gl) {
+          document.addEventListener('DOMContentLoaded', function () {
+            fail('Seu navegador não está com <b>WebGL</b> disponível, necessário para gráficos 3D.<br>Use Chrome, Edge ou Firefox atualizados e ative a <b>aceleração de hardware</b> nas configurações do navegador.');
+          });
+        }
+        setTimeout(function () {
+          var el = document.getElementById('loading');
+          if (!shown && el && el.classList.contains('active') && location.protocol === 'file:' && document.querySelector('script[type=module]')) {
+            fail('Este arquivo (dev.html) precisa de um servidor local.<br>Abra o <b>index.html</b> com duplo clique ou rode <code>npm start</code>.');
+          }
+        }, 4000);
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <div id="ui">
+      <!-- Carregamento -->
+      <div id="loading" class="screen active">
+        <div class="logo"><span class="sky">SKY</span><span class="hoop">HOOP</span></div>
+        <div class="loading-bar"><div></div></div>
+        <div class="loading-text">Preparando a arena…</div>
+      </div>
+
+      <!-- Menu principal -->
+      <div id="mainMenu" class="screen menu-left">
+        <div class="brand">
+          <div class="logo"><span class="sky">SKY</span><span class="hoop">HOOP</span></div>
+          <div class="tagline">ARENA • BASQUETE 3D</div>
+        </div>
+        <nav class="menu-list">
+          <button data-action="play" class="primary">Jogar</button>
+          <button data-action="campaign">Campanha<small>Terra Arrasada • domine as quadras em ruínas</small></button>
+          <button data-action="training">Treinamento</button>
+          <button data-action="customize">Personalizar jogador</button>
+          <button data-action="settings">Configurações</button>
+          <button data-action="controls">Controles</button>
+          <button data-action="exit">Sair</button>
+        </nav>
+        <div class="footer-note">Clique em qualquer lugar para ativar o som</div>
+      </div>
+
+      <!-- Escolha de modo -->
+      <div id="playMenu" class="screen menu-left">
+        <h2>Jogar</h2>
+        <nav class="menu-list">
+          <button data-action="quick" class="primary">Partida rápida<small>3x3 • times aleatórios • dificuldade padrão</small></button>
+          <button data-action="versus">Jogo contra IA<small>escolha times, dificuldade e duração</small></button>
+          <button data-action="campaign">Campanha<small>8 quadras pós-apocalípticas, cada vez mais difíceis</small></button>
+          <button data-action="back">Voltar</button>
+        </nav>
+      </div>
+
+      <!-- Configuração de partida -->
+      <div id="setupMenu" class="screen panel-screen">
+        <div class="panel wide">
+          <h2>Jogo contra IA</h2>
+          <div class="setup-grid">
+            <div class="team-pick">
+              <label>Seu time</label>
+              <div class="team-cards" id="homeTeams"></div>
+            </div>
+            <div class="vs">VS</div>
+            <div class="team-pick">
+              <label>Adversário</label>
+              <div class="team-cards" id="awayTeams"></div>
+            </div>
+          </div>
+          <div class="options-row">
+            <div class="opt">
+              <label>Dificuldade</label>
+              <div class="seg" id="setupDifficulty">
+                <button data-v="easy">Fácil</button><button data-v="normal">Normal</button><button data-v="hard">Difícil</button>
+              </div>
+            </div>
+            <div class="opt">
+              <label>Jogadores por time</label>
+              <div class="seg" id="setupSize">
+                <button data-v="1">1x1</button><button data-v="2">2x2</button><button data-v="3">3x3</button><button data-v="5">5x5</button>
+              </div>
+            </div>
+            <div class="opt">
+              <label>Duração do quarto</label>
+              <div class="seg" id="setupLength">
+                <button data-v="1">1 min</button><button data-v="2">2 min</button><button data-v="3">3 min</button><button data-v="5">5 min</button>
+              </div>
+            </div>
+            <div class="opt">
+              <label>Quadra</label>
+              <div class="seg" id="setupCourt"></div>
+              <div class="note small-note" id="setupCourtNote"></div>
+            </div>
+          </div>
+          <div class="panel-actions">
+            <button data-action="back">Voltar</button>
+            <button data-action="start" class="primary">Iniciar partida</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Campanha -->
+      <div id="campaignMenu" class="screen panel-screen camp-screen">
+        <div class="panel wide camp-panel">
+          <div class="camp-head">
+            <div>
+              <div class="camp-kicker">CAMPANHA</div>
+              <h2 id="campTitle">Terra Arrasada</h2>
+            </div>
+            <div id="campProgress" class="camp-progress"></div>
+          </div>
+          <p id="campIntro" class="camp-intro"></p>
+          <div class="camp-body">
+            <ol id="campStages" class="camp-stages"></ol>
+            <div id="campDetail" class="camp-detail"></div>
+          </div>
+          <div class="panel-actions">
+            <button data-action="reset" id="campReset" class="ghost">Reiniciar campanha</button>
+            <span class="spacer"></span>
+            <button data-action="back">Voltar</button>
+            <button data-action="playStage" class="primary" id="campPlay">Jogar fase</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Personalização -->
+      <div id="customizeMenu" class="screen custom-screen">
+        <div class="panel custom-panel">
+          <h2>Personalizar jogador</h2>
+          <div class="custom-scroll">
+            <div class="field two">
+              <div><label>Nome</label><input id="cName" maxlength="16" /></div>
+              <div><label>Número</label><input id="cNumber" type="number" min="0" max="99" /></div>
+            </div>
+            <div class="field">
+              <label>Posição</label>
+              <div class="seg" id="cArchetype"><button data-v="guard">Armador</button><button data-v="wing">Ala</button><button data-v="big">Pivô</button></div>
+            </div>
+            <div class="field"><label>Altura <span id="cHeightVal"></span></label><input id="cHeight" type="range" min="1.75" max="2.15" step="0.01" /></div>
+            <div class="field"><label>Físico</label><input id="cBuild" type="range" min="0.85" max="1.2" step="0.01" /></div>
+            <div class="field"><label>Largura do rosto</label><input id="cFace" type="range" min="0.88" max="1.12" step="0.01" /></div>
+            <div class="field"><label>Tom de pele</label><div class="swatches" id="cSkin"></div></div>
+            <div class="field"><label>Cabelo</label><div class="seg wrap" id="cHair"></div></div>
+            <div class="field"><label>Cor do cabelo</label><div class="swatches" id="cHairColor"></div></div>
+            <div class="field"><label>Barba</label><div class="seg wrap" id="cBeard"></div></div>
+            <div class="field"><label>Cor dos olhos</label><div class="swatches" id="cEyes"></div></div>
+            <div class="field"><label>Cor do tênis</label><div class="swatches" id="cShoes"></div></div>
+            <div class="field"><label class="check"><input type="checkbox" id="cHeadband" /> Faixa na cabeça</label></div>
+            <div class="field"><label>Atributos</label><div id="cAttrs" class="attrs"></div></div>
+          </div>
+          <div class="panel-actions">
+            <button data-action="cancel">Cancelar</button>
+            <button data-action="save" class="primary">Salvar</button>
+          </div>
+        </div>
+        <div class="preview-hint">Arraste para girar o jogador</div>
+      </div>
+
+      <!-- Configurações -->
+      <div id="settingsMenu" class="screen panel-screen">
+        <div class="panel">
+          <h2>Configurações</h2>
+          <div class="field"><label>Dificuldade padrão</label>
+            <div class="seg" data-setting="difficulty"><button data-v="easy">Fácil</button><button data-v="normal">Normal</button><button data-v="hard">Difícil</button></div></div>
+          <div class="field"><label>Câmera</label>
+            <div class="seg" data-setting="cameraMode"><button data-v="follow">Atrás do jogador</button><button data-v="broadcast">Transmissão</button></div></div>
+          <div class="field"><label>Qualidade gráfica</label>
+            <div class="seg" data-setting="quality"><button data-v="low">Baixa</button><button data-v="medium">Média</button><button data-v="high">Alta (reflexos)</button></div></div>
+          <div class="field"><label>Volume geral</label><input type="range" min="0" max="1" step="0.05" data-setting="masterVolume" /></div>
+          <div class="field"><label>Música</label><input type="range" min="0" max="1" step="0.05" data-setting="musicVolume" /></div>
+          <div class="field"><label>Efeitos</label><input type="range" min="0" max="1" step="0.05" data-setting="sfxVolume" /></div>
+          <div class="field"><label>Torcida</label><input type="range" min="0" max="1" step="0.05" data-setting="crowdVolume" /></div>
+          <div class="field"><label class="check"><input type="checkbox" data-setting="showHints" /> Mostrar dicas de controle</label></div>
+          <div class="field"><label class="check"><input type="checkbox" data-setting="autoSwitch" /> Troca automática de jogador</label></div>
+          <div class="panel-actions"><button data-action="back" class="primary">Voltar</button></div>
+        </div>
+      </div>
+
+      <!-- Controles -->
+      <div id="controlsMenu" class="screen panel-screen">
+        <div class="panel">
+          <h2>Controles</h2>
+          <table class="controls-table">
+            <tr><th>Ação</th><th>Teclado</th><th>Controle</th></tr>
+            <tr><td>Mover</td><td>W A S D / Setas</td><td>Analógico esquerdo</td></tr>
+            <tr><td>Correr</td><td>Shift</td><td>RB / RT</td></tr>
+            <tr><td>Arremessar (segure e solte)</td><td>Espaço / K</td><td>A</td></tr>
+            <tr><td>Bandeja / Enterrada</td><td>Espaço perto da cesta (correndo = enterrada)</td><td>A</td></tr>
+            <tr><td>Finta de arremesso</td><td>Toque rápido em Espaço</td><td>Toque em A</td></tr>
+            <tr><td>Passar</td><td>E / J (+ direção)</td><td>X</td></tr>
+            <tr><td>Drible (varia com a direção, veja abaixo)</td><td>X / U</td><td>B</td></tr>
+            <tr><td>Giro (spin move)</td><td>V / O</td><td>L3 / R3</td></tr>
+            <tr><td>Roubar a bola (defesa)</td><td>E / J</td><td>X</td></tr>
+            <tr><td>Pular / Bloquear (defesa)</td><td>Espaço / C</td><td>A / LB</td></tr>
+            <tr><td>Trocar de jogador</td><td>Q / I</td><td>Y</td></tr>
+            <tr><td>Pausar</td><td>Esc / P</td><td>Start</td></tr>
+            <tr><td>Treino: defensor / lance livre / reposicionar</td><td>T / F / R</td><td>— / — / Select</td></tr>
+          </table>
+          <table class="controls-table moves-table">
+            <tr><th>Drible</th><th>Como fazer</th><th>Para que serve</th></tr>
+            <tr><td>Crossover</td><td>X + lado (bola na outra mão)</td><td>troca de mão e corta para o lado</td></tr>
+            <tr><td>Por trás das costas</td><td>X + lado correndo (Shift)</td><td>troca de mão sem perder velocidade</td></tr>
+            <tr><td>Finta in-and-out</td><td>X + lado da mão da bola</td><td>finge a troca e sai para o mesmo lado</td></tr>
+            <tr><td>Entre as pernas</td><td>X parado</td><td>troca de mão protegendo a bola</td></tr>
+            <tr><td>Hesitação</td><td>X + frente</td><td>freia e arranca mais rápido</td></tr>
+            <tr><td>Step-back</td><td>X + trás</td><td>salta para trás e abre espaço para arremessar</td></tr>
+            <tr><td>Giro</td><td>V (+ lado)</td><td>gira de costas para o marcador; o mais forte para desequilibrar</td></tr>
+          </table>
+          <p class="note">Encadeie dribles em sequência para fazer <b>combos</b>: cada drible seguido aumenta a chance de desequilibrar o marcador.</p>
+          <p class="note">Barra de arremesso: solte quando o preenchimento estiver na faixa <b class="green">verde</b> para máxima precisão. Distância, marcação e cansaço também influenciam.</p>
+          <div class="panel-actions"><button data-action="back" class="primary">Voltar</button></div>
+        </div>
+      </div>
+
+      <!-- Pausa -->
+      <div id="pauseMenu" class="screen panel-screen dim">
+        <div class="panel small">
+          <h2>Pausado</h2>
+          <nav class="menu-list center">
+            <button data-action="resume" class="primary">Continuar</button>
+            <button data-action="restart">Reiniciar partida</button>
+            <button data-action="settings">Configurações</button>
+            <button data-action="controls">Controles</button>
+            <button data-action="quit">Sair para o menu</button>
+          </nav>
+        </div>
+      </div>
+
+      <!-- Fim de jogo -->
+      <div id="gameOverMenu" class="screen panel-screen dim">
+        <div class="panel wide">
+          <h1 id="goTitle">VITÓRIA!</h1>
+          <div id="goScore" class="go-score"></div>
+          <div id="goCampaign" class="go-campaign hidden"></div>
+          <div id="goBox" class="box-score"></div>
+          <div class="panel-actions">
+            <button data-action="menu">Menu principal</button>
+            <button data-action="map" class="hidden">Mapa da campanha</button>
+            <button data-action="again" class="primary">Jogar novamente</button>
+            <button data-action="next" class="primary hidden">Próxima fase</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sair -->
+      <div id="exitMenu" class="screen panel-screen">
+        <div class="panel small">
+          <h2>Obrigado por jogar!</h2>
+          <p class="note">Você pode fechar esta aba a qualquer momento.</p>
+          <div class="panel-actions"><button data-action="back" class="primary">Voltar ao menu</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HUD da partida -->
+    <div id="hud" class="hidden">
+      <div id="scorebug">
+        <div id="sb-home" class="sb-team"><span class="bar"></span><span class="abbr">CAS</span><span class="score">0</span><span class="fouls">F 0</span></div>
+        <div class="sb-center">
+          <div id="sb-period">1º Q</div>
+          <div id="sb-clock">2:00</div>
+          <div id="sb-shot">24</div>
+        </div>
+        <div id="sb-away" class="sb-team away"><span class="fouls">F 0</span><span class="score">0</span><span class="abbr">VIS</span><span class="bar"></span></div>
+      </div>
+      <div id="trainingPanel" class="hidden"></div>
+      <div id="playerCard">
+        <div class="num">7</div>
+        <div class="info">
+          <div class="name">Jogador</div>
+          <div class="pos"></div>
+          <div class="energy"><div class="fill"></div></div>
+        </div>
+      </div>
+      <div id="shotMeter" class="hidden">
+        <div class="track"><div class="zone"></div><div class="perfect"></div><div class="fill"></div></div>
+        <div class="label"></div>
+      </div>
+      <div id="messages"></div>
+      <div id="pointsPopup"></div>
+      <div id="moveLabel"></div>
+      <div id="hints" class="hidden"></div>
+    </div>
+    <div id="fade"></div>
+
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>

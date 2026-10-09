@@ -3,6 +3,7 @@ import { PLAYER, SHOT, GRAVITY, COURT } from '../config/Constants.js';
 import { CharacterModel } from './CharacterModel.js';
 import { Animator } from './Animator.js';
 import { clamp, dampAngle, distXZ, headingTo, gauss, chance } from '../core/MathUtils.js';
+import { getMove, COMBO_WINDOW } from './DribbleMoves.js';
 import { computeJumpShot, computeLayup, contestLevel, isThreePoint, solveByTime } from '../physics/ShotCalculator.js';
 
 export const EMPTY_INTENT = Object.freeze({
@@ -14,7 +15,7 @@ export const EMPTY_INTENT = Object.freeze({
   passTarget: null,
   steal: false,
   jump: false,
-  crossover: false,
+  dribbleMove: null,
   face: null,
 });
 
@@ -57,7 +58,11 @@ export class Player {
     this.lockMove = false;
     this.lockActions = false;
     this.scriptTarget = null;
-    this.cooldowns = { steal: 0, pass: 0, jump: 0, crossover: 0, catch: 0 };
+    this.cooldowns = { steal: 0, pass: 0, jump: 0, dribble: 0, catch: 0 };
+    this.burstTime = 0;
+    this.burstMul = 1;
+    this.combo = 0;
+    this.lastMoveEnd = -10;
     this.prevShootHeld = false;
     this.intent = EMPTY_INTENT;
     this.speed = 0;
@@ -160,7 +165,7 @@ export class Player {
     if (this.hasBall) {
       const prev = this.dribblePhase;
       this.dribblePhase = (this.dribblePhase + dt * (1.45 + this.speed * 0.2)) % 1;
-      if ((!this.action || this.action === 'crossover') && prev < 0.5 && this.dribblePhase >= 0.5) {
+      if ((!this.action || this.action === 'dribbleMove') && prev < 0.5 && this.dribblePhase >= 0.5) {
         this.world.emit('dribble', { player: this, pos: this.ballAnchor });
       }
     }
@@ -187,7 +192,8 @@ export class Player {
     if (!intent.shootHeld) this.shootQueued = false;
     if (intent.pass) this.passQueued = { target: intent.passTarget, t: 0.25 };
     if (hasBall) {
-      const free = !this.action || this.action === 'catch';
+      // os últimos quadros de um drible já aceitam arremesso/passe (encadeamento)
+      const free = !this.action || this.action === 'catch' || (this.action === 'dribbleMove' && this.actionTime >= getMove(this.actionData.kind).duration * 0.7);
       if (intent.shootHeld && this.shootQueued && free && this.onGround) {
         this.shootQueued = false;
         this.passQueued = null;
@@ -196,7 +202,9 @@ export class Player {
         const q = this.passQueued;
         this.passQueued = null;
         this.beginPass(q.target);
-      } else if (intent.crossover && !this.action && this.cooldowns.crossover <= 0 && this.onGround) this.beginCrossover();
+      } else if (intent.dribbleMove && (!this.action || this.action === 'catch') && this.cooldowns.dribble <= 0 && this.onGround) {
+        this.beginDribbleMove(intent.dribbleMove.kind, intent.dribbleMove.side, intent.dribbleMove.push);
+      }
     } else {
       if (intent.steal && !this.action && this.cooldowns.steal <= 0 && this.onGround) this.beginSteal();
       else if (intent.jump && (!this.action || this.action === 'catch') && this.onGround && this.cooldowns.jump <= 0) this.beginJump();
@@ -251,7 +259,7 @@ export class Player {
       skill,
       contest,
       fatigue: 1 - this.energy,
-      extraSigma: (this.controller && this.controller.shotSigma) || 0,
+      extraSigma: ((this.controller && this.controller.shotSigma) || 0) + (this.team === 0 ? w.mods.homeShotSigma : 0),
       isFreeThrow: d.ft,
     });
     const info = {
@@ -381,7 +389,7 @@ export class Player {
     p *= (this.controller && this.controller.stealSkill) || 1;
     if (bd < 0.75) p += 0.12;
     if (h.action === 'shoot' || h.action === 'pass') p *= 0.5;
-    if (h.action === 'crossover') p *= 0.6;
+    if (h.action === 'dribbleMove') p *= getMove(h.actionData.kind).protect;
     if (chance(p)) {
       const dir = new THREE.Vector3(this.pos.x - h.pos.x, 0, this.pos.z - h.pos.z).normalize();
       const v = dir.multiplyScalar(2.6).add(new THREE.Vector3(gauss() * 0.8, 1.6, gauss() * 0.8));
@@ -405,15 +413,37 @@ export class Player {
     this.blockRolled = new Set();
   }
 
-  beginCrossover() {
+  // Dribles: crossover, finta, por trás das costas, entre as pernas, giro,
+  // hesitação e step-back (definidos em DribbleMoves.js)
+  beginDribbleMove(kind, side, push = null) {
+    const m = getMove(kind);
     const from = this.dribbleHand;
-    this.setAction('crossover', { fromHand: from, switched: false });
-    this.cooldowns.crossover = 0.75;
-    // impulso lateral para o lado da nova mão
+    const to = m.switchHand ? -from : from;
+    const dir = side || to;
+    // drible encadeado logo após outro aumenta o combo
+    this.combo = this.world.time - this.lastMoveEnd < COMBO_WINDOW ? Math.min(this.combo + 1, 4) : 0;
+    this.setAction('dribbleMove', { kind, fromHand: from, toHand: to, side: dir, switched: false, burst: false, startHeading: this.heading, combo: this.combo });
+    this.cooldowns.dribble = m.cooldown * (1.15 - 0.3 * this.attr('speed'));
+    this.energy = Math.max(0, this.energy - m.cost);
+    const f = this.forward;
     const r = this.right;
-    this.vel.addScaledVector(r, -from * 3.2);
-    this.world.emit('crossover', { player: this });
-    this.world.checkAnkleBreaker(this);
+    const handling = 0.85 + 0.3 * (this.attr('passing') + this.attr('speed')) / 2;
+    if (push && Math.hypot(push.x, push.z) > 0.1) {
+      // direção de saída definida pelo comando (step-back): o atleta fica de frente para o lado oposto
+      const l = Math.hypot(push.x, push.z);
+      this.heading = Math.atan2(-push.x, -push.z);
+      this.vel.x += (push.x / l) * Math.abs(m.forward) * handling;
+      this.vel.z += (push.z / l) * Math.abs(m.forward) * handling;
+    } else {
+      this.vel.addScaledVector(r, dir * m.lateral * handling);
+      this.vel.addScaledVector(f, m.forward * handling);
+    }
+    if (m.hop) {
+      this.vel.y = m.hop;
+      this.onGround = false;
+    }
+    this.world.emit('dribbleMove', { player: this, kind, label: m.label, combo: this.combo });
+    if (m.ankle > 0.5) this.world.checkAnkleBreaker(this, m.ankle * (1 + 0.3 * this.combo));
   }
 
   stumble(duration = 0.7) {
@@ -510,13 +540,37 @@ export class Player {
       case 'tipoff':
         if (this.onGround && this.actionTime > 0.15) this.clearAction();
         break;
-      case 'crossover':
-        if (!d.switched && this.actionTime >= 0.18) {
-          d.switched = true;
-          this.dribbleHand = -d.fromHand;
+      case 'dribbleMove': {
+        const m = getMove(d.kind);
+        if (!this.hasBall) {
+          this.clearAction();
+          break;
         }
-        if (this.actionTime >= 0.38) this.clearAction();
+        if (!d.switched && m.switchAt != null && this.actionTime >= m.switchAt) {
+          d.switched = true;
+          this.dribbleHand = d.toHand;
+        }
+        if (d.kind === 'spin') {
+          // giro completo: vira de costas para o marcador e volta de frente
+          const k = clamp(this.actionTime / m.duration, 0, 1);
+          const sm = k * k * (3 - 2 * k);
+          this.heading = d.startHeading - d.side * Math.PI * 2 * sm;
+        }
+        if (m.burstAt != null && !d.burst && this.actionTime >= m.burstAt) {
+          // hesitação: freia e explode para frente
+          d.burst = true;
+          this.burstTime = m.burstTime;
+          this.burstMul = m.burstMul;
+          this.vel.addScaledVector(this.forward, m.burstPush);
+          w.checkAnkleBreaker(this, m.ankle * (1 + 0.3 * (d.combo || 0)));
+        }
+        if (this.actionTime >= m.duration && this.onGround) {
+          if (d.kind === 'spin') this.heading = d.startHeading;
+          this.lastMoveEnd = w.time;
+          this.clearAction();
+        }
         break;
+      }
       case 'catch':
         if (this.actionTime >= 0.18) this.clearAction();
         break;
@@ -537,6 +591,10 @@ export class Player {
     if (this.hasBall) maxSpeed *= 0.93;
     if (this.controller && this.controller.speedMul) maxSpeed *= this.controller.speedMul;
     if (this.stance === 'defense' && !intent.sprint) maxSpeed *= 0.85;
+    if (this.burstTime > 0) {
+      this.burstTime -= dt;
+      maxSpeed *= this.burstMul;
+    }
 
     let control = 1;
     switch (this.action) {
@@ -559,6 +617,11 @@ export class Player {
       case 'catch':
         control = 0.75;
         break;
+      case 'dribbleMove': {
+        const m = getMove(this.actionData.kind);
+        control = m.burstAt != null && this.actionData.burst ? 1 : m.control;
+        break;
+      }
       case 'layup':
       case 'dunk':
         control = this.actionData.jumped ? -1 : 0.6;
@@ -575,7 +638,7 @@ export class Player {
       const dz = tz - this.vel.z;
       const dl = Math.hypot(dx, dz);
       const speeding = tx * tx + tz * tz > this.vel.x * this.vel.x + this.vel.z * this.vel.z;
-      const maxDelta = (speeding ? PLAYER.accel : PLAYER.decel) * dt;
+      const maxDelta = (speeding ? PLAYER.accel : PLAYER.decel) * dt * w.mods.grip;
       if (dl > maxDelta) {
         this.vel.x += (dx / dl) * maxDelta;
         this.vel.z += (dz / dl) * maxDelta;
@@ -609,7 +672,8 @@ export class Player {
     else if (this.action === 'shoot' || this.action === 'ft' || this.action === 'layup' || this.action === 'dunk') {
       target = headingTo(this.pos, w.attackBasket(this.team));
     } else if (Math.hypot(this.vel.x, this.vel.z) > 0.4) target = Math.atan2(this.vel.x, this.vel.z);
-    if (target != null && this.action !== 'pass') this.heading = dampAngle(this.heading, target, PLAYER.turnRate, dt);
+    const holdHeading = this.action === 'dribbleMove' && (this.actionData.kind === 'spin' || this.actionData.kind === 'stepback' || this.actionData.kind === 'betweenLegs');
+    if (target != null && this.action !== 'pass' && !holdHeading) this.heading = dampAngle(this.heading, target, PLAYER.turnRate, dt);
 
     const f = this.forward;
     const r = this.right;
@@ -632,7 +696,7 @@ export class Player {
 
   updateEnergy(dt, intent) {
     if (intent.sprint && this.speed > 3) {
-      this.energy -= dt * 0.07 * (1.35 - this.attr('stamina') * 0.55);
+      this.energy -= dt * 0.07 * (1.35 - this.attr('stamina') * 0.55) * this.world.mods.drain;
     } else {
       this.energy += dt * (this.speed < 1 ? 0.065 : 0.035);
     }
@@ -661,13 +725,8 @@ export class Player {
         const mid = this.handPos.add(this.handPos2).multiplyScalar(0.5).addScaledVector(f, 0.12);
         a.lerp(mid, k);
       }
-    } else if (act === 'crossover') {
-      const k = clamp(this.actionTime / 0.36, 0, 1);
-      const sm = k * k * (3 - 2 * k);
-      const from = this.actionData.fromHand;
-      const lat = from * (1 - 2 * sm) * 0.3 * s;
-      a.copy(this.pos).addScaledVector(f, 0.42 * s).addScaledVector(r, lat);
-      a.y = 0.2 + 0.58 * s * Math.abs(Math.cos(Math.PI * k));
+    } else if (act === 'dribbleMove') {
+      this.dribbleMoveAnchor(a, f, r, s);
     } else if (act === 'pass') {
       this.model.joints.rHand.getWorldPosition(this.handPos);
       this.model.joints.lHand.getWorldPosition(this.handPos2);
@@ -679,6 +738,74 @@ export class Player {
     }
   }
 
+  // Trajetória da bola durante cada drible
+  dribbleMoveAnchor(a, f, r, s) {
+    const d = this.actionData;
+    const m = getMove(d.kind);
+    const lift = this.onGround ? 0 : this.pos.y;
+    const from = d.fromHand;
+    const to = d.toHand;
+    const smooth = (k) => k * k * (3 - 2 * k);
+    switch (d.kind) {
+      case 'crossover': {
+        const k = clamp(this.actionTime / (m.switchAt * 2), 0, 1);
+        const lat = from + (to - from) * smooth(k);
+        a.copy(this.pos).addScaledVector(f, 0.42 * s).addScaledVector(r, lat * 0.32 * s);
+        a.y = 0.2 + 0.58 * s * Math.abs(Math.cos(Math.PI * k));
+        break;
+      }
+      case 'inOut': {
+        // leva a bola para o meio e volta para a mesma mão
+        const k = clamp(this.actionTime / m.duration, 0, 1);
+        const lat = from * (1 - 0.85 * Math.sin(Math.PI * k));
+        a.copy(this.pos).addScaledVector(f, 0.4 * s).addScaledVector(r, lat * 0.32 * s);
+        a.y = 0.25 + 0.6 * s * Math.abs(Math.cos(Math.PI * k * 2));
+        break;
+      }
+      case 'behindBack': {
+        // bola passa por trás do quadril
+        const k = clamp(this.actionTime / (m.switchAt * 1.8), 0, 1);
+        const lat = from + (to - from) * smooth(k);
+        const back = Math.sin(Math.PI * k);
+        a.copy(this.pos).addScaledVector(f, (0.3 - 0.62 * back) * s).addScaledVector(r, lat * 0.34 * s);
+        a.y = (0.55 + 0.15 * back) * s;
+        break;
+      }
+      case 'betweenLegs': {
+        // quique entre as pernas, com o pé da frente avançado
+        const k = clamp(this.actionTime / (m.switchAt * 2), 0, 1);
+        const lat = from + (to - from) * smooth(k);
+        a.copy(this.pos).addScaledVector(f, (0.2 - 0.1 * Math.sin(Math.PI * k)) * s).addScaledVector(r, lat * 0.3 * s);
+        a.y = 0.14 + 0.62 * s * Math.abs(Math.cos(Math.PI * k));
+        break;
+      }
+      case 'spin': {
+        // bola presa na palma, girando junto com o corpo
+        const k = clamp(this.actionTime / m.duration, 0, 1);
+        const hand = k < m.switchAt / m.duration ? from : to;
+        a.copy(this.pos).addScaledVector(f, 0.22 * s).addScaledVector(r, hand * 0.38 * s);
+        a.y = (0.85 - 0.2 * Math.sin(Math.PI * k)) * s;
+        break;
+      }
+      case 'hesitation': {
+        // bola alta no "bolso" e depois quique forte na arrancada
+        const k = clamp(this.actionTime / m.duration, 0, 1);
+        const high = k < m.burstAt / m.duration;
+        a.copy(this.pos).addScaledVector(f, (high ? 0.3 : 0.45) * s).addScaledVector(r, from * 0.3 * s);
+        a.y = high ? (0.85 + 0.12 * Math.sin(k * 20)) * s : 0.2 + 0.7 * s * Math.abs(Math.cos(Math.PI * (k - 0.5) * 2));
+        break;
+      }
+      case 'stepback':
+      default: {
+        const k = clamp(this.actionTime / m.duration, 0, 1);
+        a.copy(this.pos).addScaledVector(f, 0.3 * s).addScaledVector(r, from * 0.22 * s);
+        a.y = (0.75 - 0.25 * Math.sin(Math.PI * k)) * s;
+        break;
+      }
+    }
+    a.y += lift;
+  }
+
   setMarker(visible, color) {
     this.marker.visible = visible;
     if (color) this.marker.material.color.set(color);
@@ -686,8 +813,11 @@ export class Player {
 
   dispose() {
     this.model.dispose();
-    this.ring.parent && this.ring.parent.remove(this.ring);
-    this.marker.parent && this.marker.parent.remove(this.marker);
+    for (const m of [this.ring, this.marker]) {
+      if (m.parent) m.parent.remove(m);
+      m.geometry.dispose();
+      m.material.dispose();
+    }
   }
 }
 

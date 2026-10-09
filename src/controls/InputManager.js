@@ -18,6 +18,8 @@ const KEYMAP = {
   KeyC: 'jump',
   KeyX: 'crossover',
   KeyU: 'crossover',
+  KeyV: 'spin',
+  KeyO: 'spin',
   KeyQ: 'switch',
   KeyI: 'switch',
   Escape: 'pause',
@@ -39,6 +41,8 @@ const PAD_BUTTONS = {
   6: 'jump',
   9: 'pause',
   8: 'reset',
+  10: 'spin',
+  11: 'spin',
 };
 
 export class InputManager {

@@ -1,5 +1,7 @@
 import { TEAMS, SKIN_TONES, HAIR_COLORS, HAIR_STYLES, HAIR_STYLE_LABELS, BEARDS, BEARD_LABELS, EYE_COLORS, ARCHETYPES } from '../data/Teams.js';
 import { profileAttrs } from '../data/PlayerProfile.js';
+import { STAGES, MODIFIERS, CAMPAIGN_TITLE, CAMPAIGN_INTRO, rewardText } from '../campaign/CampaignData.js';
+import { isUnlocked, resetCampaign } from '../campaign/CampaignProgress.js';
 
 const $ = (s) => document.querySelector(s);
 const ATTR_LABELS = {
@@ -73,6 +75,22 @@ export class Menus {
     // principal
     on('mainMenu', 'play', () => this.show('playMenu'));
     on('mainMenu', 'training', () => this.game.startMode('training', {}));
+    on('mainMenu', 'campaign', () => this.openCampaign());
+    on('playMenu', 'campaign', () => this.openCampaign());
+    on('campaignMenu', 'back', () => this.back());
+    on('campaignMenu', 'playStage', () => this.playStage(this.campSel));
+    on('campaignMenu', 'reset', () => {
+      // confirmação em dois cliques
+      const b = $('#campReset');
+      if (!b.classList.contains('confirm')) {
+        b.classList.add('confirm');
+        b.textContent = 'Clique de novo para apagar o progresso';
+        return;
+      }
+      this.game.campaign = resetCampaign();
+      this.campSel = 0;
+      this.renderCampaign();
+    });
     on('mainMenu', 'customize', () => this.openCustomize());
     on('mainMenu', 'settings', () => this.show('settingsMenu'));
     on('mainMenu', 'controls', () => this.show('controlsMenu'));
@@ -117,7 +135,6 @@ export class Menus {
     this.bindSeg('#setupDifficulty', (v) => (this.setup.difficulty = v));
     this.bindSeg('#setupSize', (v) => (this.setup.teamSize = +v));
     this.bindSeg('#setupLength', (v) => (this.setup.quarterLength = +v));
-    this.bindSeg('#setupCourt', (v) => (this.setup.court = v));
     // configurações / controles
     on('settingsMenu', 'back', () => this.back());
     on('controlsMenu', 'back', () => this.back());
@@ -131,6 +148,11 @@ export class Menus {
     // fim de jogo
     on('gameOverMenu', 'menu', () => this.game.quitToMenu());
     on('gameOverMenu', 'again', () => this.game.restart());
+    on('gameOverMenu', 'map', () => this.game.quitToMenu('campaignMenu'));
+    on('gameOverMenu', 'next', () => {
+      const i = this.game.mode && this.game.mode.stageIndex;
+      if (i != null && STAGES[i + 1]) this.playStage(i + 1);
+    });
     // personalização
     on('customizeMenu', 'cancel', () => this.game.exitCustomize(false));
     on('customizeMenu', 'save', () => this.game.exitCustomize(true));
@@ -185,8 +207,114 @@ export class Menus {
     this.setSeg('#setupDifficulty', s.difficulty);
     this.setSeg('#setupSize', s.teamSize);
     this.setSeg('#setupLength', s.quarterLength);
-    this.setSeg('#setupCourt', s.court);
+    this.renderCourts();
     this.show('setupMenu');
+  }
+
+  // Quadras do jogo contra IA: as da arena e as dominadas na campanha
+  renderCourts() {
+    const st = this.game.campaign;
+    const courts = [
+      ['arena', 'Arena Central'],
+      ['classic', 'Ginásio Clássico'],
+      ...STAGES.filter((s) => st.rewarded[s.id]).map((s) => [s.court, s.title]),
+    ];
+    if (!courts.some(([id]) => id === this.setup.court)) this.setup.court = 'arena';
+    const root = $('#setupCourt');
+    root.innerHTML = '';
+    for (const [id, label] of courts) {
+      const b = document.createElement('button');
+      b.dataset.v = id;
+      b.textContent = label;
+      b.classList.toggle('on', id === this.setup.court);
+      b.addEventListener('click', () => {
+        this.click();
+        this.setup.court = id;
+        this.renderCourts();
+      });
+      root.appendChild(b);
+    }
+    const locked = STAGES.length - courts.length + 2;
+    $('#setupCourtNote').textContent = locked > 0 ? `Domine quadras na campanha para jogar nelas aqui (${locked} bloqueadas).` : '';
+  }
+
+  // -------------------------------------------------------------------
+  // Campanha: mapa das fases e detalhes da fase escolhida
+  openCampaign() {
+    const st = this.game.campaign;
+    // por padrão, seleciona a fase mais avançada liberada
+    this.campSel = Math.min(st.unlocked, STAGES.length) - 1;
+    const b = $('#campReset');
+    b.classList.remove('confirm');
+    b.textContent = 'Reiniciar campanha';
+    this.renderCampaign();
+    this.show('campaignMenu');
+  }
+
+  stars(n) {
+    return `<span class="stars" aria-label="${n} de 3 estrelas">${[0, 1, 2].map((i) => (i < n ? '★' : '<span class="off">★</span>')).join('')}</span>`;
+  }
+
+  danger(tier) {
+    const n = 1 + Math.round(tier * 4);
+    return `<span class="danger" aria-label="dificuldade ${n} de 5">${[0, 1, 2, 3, 4].map((i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</span>`;
+  }
+
+  renderCampaign() {
+    const st = this.game.campaign;
+    $('#campTitle').textContent = CAMPAIGN_TITLE;
+    $('#campIntro').textContent = CAMPAIGN_INTRO;
+    const won = STAGES.filter((s) => st.rewarded[s.id]).length;
+    const totalStars = STAGES.reduce((a, s) => a + (st.stars[s.id] || 0), 0);
+    $('#campProgress').innerHTML = `<b>${won}/${STAGES.length}</b> quadras dominadas<br><b>${totalStars}/${STAGES.length * 3}</b> estrelas`;
+    const list = $('#campStages');
+    list.innerHTML = '';
+    STAGES.forEach((s, i) => {
+      const open = isUnlocked(st, i);
+      const li = document.createElement('li');
+      const b = document.createElement('button');
+      b.className = `camp-stage${i === this.campSel ? ' on' : ''}${open ? '' : ' locked'}`;
+      b.style.setProperty('--c', s.team.primary);
+      b.innerHTML = `<span class="n">FASE ${i + 1}${st.rewarded[s.id] ? ' • DOMINADA' : ''}</span><span class="t">${s.title}</span><span class="g">${s.team.name}</span>
+        <span class="row">${open ? this.stars(st.stars[s.id] || 0) : '<span class="lock-tag">BLOQUEADA</span>'}${this.danger(s.tier)}</span>`;
+      b.addEventListener('click', () => {
+        this.click();
+        this.campSel = i;
+        this.renderCampaign();
+      });
+      b.addEventListener('dblclick', () => open && this.playStage(i));
+      li.appendChild(b);
+      list.appendChild(li);
+    });
+    const s = STAGES[this.campSel];
+    const open = isUnlocked(st, this.campSel);
+    const fmt = (v) => String(v).replace('.', ',');
+    const mods = s.modifiers.length
+      ? s.modifiers.map((id) => `<span class="chip" title="${MODIFIERS[id].desc}">${MODIFIERS[id].label}: ${MODIFIERS[id].desc}</span>`).join('')
+      : '<span class="chip calm">Sem regras especiais</span>';
+    const periods = s.quarters === 2 ? `2 tempos de ${fmt(s.quarterLength)} min` : `4 quartos de ${fmt(s.quarterLength)} min`;
+    $('#campDetail').innerHTML = `
+      <div class="region">Fase ${this.campSel + 1} • ${s.region}</div>
+      <h3>${s.title}</h3>
+      <div class="vs" style="--c:${s.team.primary}">contra <b>${s.team.name}</b> (geral ${s.team.rating})</div>
+      <p>${s.story}</p>
+      <dl class="camp-facts">
+        <dt>Formato</dt><dd>${s.teamSize}x${s.teamSize} • ${periods}</dd>
+        <dt>Perigo</dt><dd>${this.danger(s.tier)}</dd>
+        <dt>Quadra</dt><dd>${mods}</dd>
+        <dt>Recompensa</dt><dd>${rewardText(s.reward)}${st.rewarded[s.id] ? ' (recebida)' : ''}</dd>
+        <dt>Estrelas</dt><dd>${this.stars(st.stars[s.id] || 0)} vença por 5+ para 2, por 10+ para 3</dd>
+      </dl>
+      ${open ? '' : '<p><b>Bloqueada:</b> domine a quadra anterior para liberar.</p>'}`;
+    const play = $('#campPlay');
+    play.disabled = !open;
+    play.textContent = st.rewarded[s.id] ? 'Jogar de novo' : 'Jogar fase';
+  }
+
+  playStage(i) {
+    const s = STAGES[i];
+    if (!s || !isUnlocked(this.game.campaign, i)) return;
+    this.game.startMode('campaign', { stage: s.id, court: s.court });
   }
 
   // -------------------------------------------------------------------
@@ -348,6 +476,26 @@ export class Menus {
       return `<table><caption>${t[team].name}</caption><tr><th>Jogador</th><th>PTS</th><th>AC</th><th>3P</th><th>LL</th><th>REB</th><th>AST</th><th>ROU</th><th>TOC</th><th>FAL</th></tr>${rows}</table>`;
     };
     $('#goBox').innerHTML = table(0) + table(1);
+    // bloco da campanha: estrelas, recompensa e próxima fase
+    const camp = mode.campaignResult;
+    const cbox = $('#goCampaign');
+    const btn = (a) => $(`#gameOverMenu [data-action="${a}"]`);
+    cbox.classList.toggle('hidden', !camp);
+    btn('map').classList.toggle('hidden', !camp);
+    const hasNext = !!(camp && camp.won && STAGES[mode.stageIndex + 1]);
+    btn('next').classList.toggle('hidden', !hasNext);
+    btn('again').classList.toggle('hidden', hasNext);
+    btn('again').textContent = camp ? (camp.won ? 'Jogar de novo' : 'Tentar de novo') : 'Jogar novamente';
+    if (camp) {
+      const st = mode.stage;
+      let html = camp.won
+        ? `<div class="big">${camp.finished ? 'A TERRA ARRASADA É SUA!' : 'QUADRA DOMINADA!'}</div>${this.stars(camp.stars)}`
+        : `<div class="big">${st.team.name} ainda mandam aqui</div><div class="line">Vença para dominar a quadra e liberar a próxima fase.</div>`;
+      if (camp.reward) html += `<div class="line">Recompensa: <b>${rewardText(camp.reward)}</b></div>`;
+      if (camp.unlockedNext) html += `<div class="line">Nova quadra liberada: <b>${camp.unlockedNext.title}</b></div>`;
+      if (camp.won && camp.stars < 3) html += `<div class="line">Vença por ${camp.stars < 2 ? '5' : '10'}+ pontos para mais estrelas.</div>`;
+      cbox.innerHTML = html;
+    }
     this.stack = [];
     this.show('gameOverMenu', false);
   }

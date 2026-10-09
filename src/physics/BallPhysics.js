@@ -9,6 +9,7 @@ const CEILING = 21;
 export class BallPhysics {
   constructor(onEvent) {
     this.onEvent = onEvent; // (type, data) => void
+    this.wind = null; // aceleração lateral do vento na bola em voo (m/s²)
     this.rims = [1, -1].map((s) => ({ side: s, x: s * COURT.basketX, y: COURT.rimHeight, z: 0 }));
   }
 
@@ -25,6 +26,10 @@ export class BallPhysics {
     const r = BALL.radius;
     const prevY = p.y;
 
+    if (this.wind && p.y > r + 0.05) {
+      v.x += this.wind.x * h;
+      v.z += this.wind.z * h;
+    }
     // integração exata para gravidade constante (trajetórias previsíveis)
     p.x += v.x * h;
     p.y += v.y * h - 0.5 * GRAVITY * h * h;

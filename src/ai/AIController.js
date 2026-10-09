@@ -16,7 +16,7 @@ function blankIntent() {
     passTarget: null,
     steal: false,
     jump: false,
-    crossover: false,
+    dribbleMove: null,
     face: null,
     contest: false,
   };
@@ -76,7 +76,7 @@ export class AIController {
     I.passTarget = null;
     I.steal = false;
     I.jump = false;
-    I.crossover = false;
+    I.dribbleMove = null;
     I.face = null;
     I.contest = false;
 
@@ -196,6 +196,17 @@ export class AIController {
     const rules = w.rules;
     const s = w.attackSign(p.team);
     const basket = w.attackBasket(p.team);
+    if (this.stepbackShot != null) {
+      // logo após o step-back, arremessa no espaço criado
+      this.stepbackShot -= dt;
+      if (p.action === 'dribbleMove' && p.actionData.kind === 'stepback') return;
+      const st = this.stepbackShot;
+      this.stepbackShot = null;
+      if (!p.action && st > -0.3 && chance(0.8)) {
+        this.startShot(p);
+        return;
+      }
+    }
     if (p.action) return;
     const est = this.estimateShot(p);
     const inBackcourt = p.pos.x * s < -0.3;
@@ -257,7 +268,7 @@ export class AIController {
       }
       // drible especial quando o marcador está colado à frente
       const nearest = this.nearestDefender(p);
-      if (nearest && nearest.d < 1.6 && chance(0.18 + 0.15 * prof.decision)) I.crossover = true;
+      if (nearest && nearest.d < 1.6 && chance(0.18 + 0.15 * prof.decision)) I.dribbleMove = this.pickDribble(p, nearest, est);
     }
 
     // movimento contínuo
@@ -292,6 +303,42 @@ export class AIController {
       target.set(basket.x - s * Math.cos(ang) * 7.0, 0, Math.sin(ang) * 5.8);
       this.moveTo(p, target, 5, 0.6);
     }
+  }
+
+  // Escolhe um drible variado: step-back para criar espaço de arremesso,
+  // giro/crossover para passar pelo marcador, hesitação para arrancar
+  pickDribble(p, nearest, est) {
+    const o = nearest.o;
+    const r = p.right;
+    const lat = (o.pos.x - p.pos.x) * r.x + (o.pos.z - p.pos.z) * r.z;
+    const away = lat > 0 ? -1 : 1; // lado oposto ao marcador
+    const hand = p.dribbleHand;
+    const shooter = Math.max(p.attr('three'), p.attr('shooting'));
+    if (est.d > 4.5 && est.d < 8.4 && shooter > 0.78 && chance(0.4)) {
+      this.stepbackShot = 0.55;
+      return { kind: 'stepback', side: hand };
+    }
+    const options = [
+      ['crossover', 3],
+      ['behindBack', 1.5],
+      ['betweenLegs', 1.2],
+      ['spin', est.d < 6 ? 1.6 : 0.6],
+      ['hesitation', 1.6],
+      ['inOut', 1],
+    ];
+    const total = options.reduce((a, b) => a + b[1], 0);
+    let x = Math.random() * total;
+    let kind = 'crossover';
+    for (const [k, wgt] of options) {
+      if ((x -= wgt) <= 0) {
+        kind = k;
+        break;
+      }
+    }
+    if (kind === 'crossover' || kind === 'behindBack') {
+      if (away === hand) kind = 'inOut';
+    }
+    return { kind, side: kind === 'betweenLegs' ? -hand : kind === 'hesitation' ? hand : away };
   }
 
   nearestDefender(p) {
