@@ -99,7 +99,7 @@ export class Game {
 
   toTitle(first = false) {
     this.ui.closeAll();
-    this.timers = [];
+    this.resetTransient();
     this.mode = 'title';
     this.hud.show(false);
     this.ui.showClick(false);
@@ -116,6 +116,20 @@ export class Game {
     this.audio.setMusic('menu');
     this.ui.fade(0, first ? 2 : 0.8);
     this.ui.title();
+  }
+
+  // limpa tudo o que é temporário da sessão anterior (temporizadores, rádio, HUD)
+  resetTransient() {
+    this.timers = [];
+    this.musicOverride = null;
+    this.tense = false;
+    this.cutsceneLock = false;
+    this.ui.radioQueue.length = 0;
+    this.ui.subs.classList.add('hidden');
+    this.hud.setTimer(null);
+    this.hud.setStruggle(0, false);
+    this.cam.endCinematic();
+    this.player.locked = false;
   }
 
   freshState(difficulty) {
@@ -150,6 +164,7 @@ export class Game {
     this.mode = 'cutscene';
     this.audio.setMusic('none');
     await this.ui.fade(1, 0.8);
+    this.resetTransient();
     this.state = this.freshState(difficulty);
     this.inv = new Inventory(this.state);
     this.diff = DIFFICULTY[difficulty];
@@ -187,6 +202,7 @@ export class Game {
     this.ui.closeAll();
     this.mode = 'cutscene';
     await this.ui.fade(1, 0.6);
+    this.resetTransient();
     this.state = JSON.parse(JSON.stringify(data));
     this.state.hintsShown ||= {};
     this.inv = new Inventory(this.state);
@@ -277,6 +293,7 @@ export class Game {
     if (this.mode === 'title') return;
     const zn = this.world.zoneNow;
     let track = this.world.map.music || 'explore';
+    if (this.tense) track = 'tension';
     if (zn && zn.safe) track = 'safe';
     if (this.musicOverride) track = this.musicOverride;
     this.audio.setMusic(track);
@@ -399,13 +416,11 @@ export class Game {
   resumeLock() {
     if (this.debug && !document.hasFocus()) return;
     this.input.requestLock();
-    setTimeout(() => {
-      if (this.mode === 'playing' && !this.input.locked && !this.debug) this.ui.showClick(true);
-    }, 400);
   }
 
   onLockChange(locked) {
     if (locked) {
+      this._needClick = false;
       this.ui.showClick(false);
       return;
     }
@@ -521,6 +536,14 @@ export class Game {
         }
       }
       if (this.player.grabbedBy) this.hint('struggle');
+      // trilha adaptativa: tensão quando há criaturas alertas por perto
+      const wantTense = this.fear > 0.45;
+      this.tenseT = wantTense === !!this.tense ? 0 : (this.tenseT || 0) + dt;
+      if (this.tenseT > (wantTense ? 1 : 5)) {
+        this.tense = wantTense;
+        this.tenseT = 0;
+        this.updateMusic();
+      }
     } else if (mode === 'title') {
       this.titleT += dt;
       const t = this.titleT * 0.05;
@@ -563,6 +586,14 @@ export class Game {
     u.lowHealth.value = this.state && mode !== 'title' ? clamp((35 - this.player.hp) / 35, 0, 1) : 0;
     u.flash.value = this.fx.flash || 0;
     if (!render) return;
+    // sem o ponteiro travado a câmera não responde: mostra o aviso de clique
+    const unlocked = mode === 'playing' && !this.input.locked && !this.debug && !this.ui.open;
+    this._unlockedT = unlocked ? (this._unlockedT || 0) + dt : 0;
+    const needClick = this._unlockedT > 0.4;
+    if (needClick !== this._needClick) {
+      this._needClick = needClick;
+      this.ui.showClick(needClick);
+    }
     const cam = this.cam.camera;
     const fwd = new THREE.Vector3();
     cam.getWorldDirection(fwd);

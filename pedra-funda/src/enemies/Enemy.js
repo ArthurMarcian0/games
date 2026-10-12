@@ -942,7 +942,8 @@ export class Vigia extends Enemy {
         speed = this.speed * (d > 14 ? 1.25 : 1);
         this.moveToward(p.pos.x, p.pos.z, speed, dt, 6);
         this.breakDoors();
-        if (d < 2.0) {
+        // não bate em quem está caído: espera ele levantar
+        if (d < 2.0 && p.knockT <= 0) {
           this.setState('attack');
           g.audio.play('vigiaRoar', this.pos, 0.5);
         }
@@ -1025,7 +1026,7 @@ export class Vigia extends Enemy {
 
   breakDoors() {
     for (const door of this.world.doors) {
-      if (door.open || door.def.to || door.def.sealed) continue;
+      if (door.open || door.locked || door.def.to || door.def.sealed) continue;
       const dx = door.def.x - this.pos.x;
       const dz = door.def.z - this.pos.z;
       if (dx * dx + dz * dz < 2.2 * 2.2) {

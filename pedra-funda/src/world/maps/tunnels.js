@@ -11,7 +11,7 @@ export default {
   ground: 0x060606,
   ambient: 0.1,
   ambience: 'tunnels',
-  music: 'explore',
+  music: 'none',
   bounds: { minX: -33, minZ: -92, maxX: 33, maxZ: 2 },
   ceilDefault: 3.4,
 

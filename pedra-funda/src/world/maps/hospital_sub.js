@@ -22,7 +22,7 @@ export default {
   ground: 0x080808,
   ambient: 0.08,
   ambience: 'basement',
-  music: 'explore',
+  music: 'none',
   bounds: { minX: -16, minZ: -12, maxX: 32, maxZ: 18 },
   ceilDefault: 3,
 

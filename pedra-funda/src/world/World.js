@@ -572,8 +572,7 @@ export class World {
 
   // ----------------------------------------------------------------- portas
   forceOpenDoor(door) {
-    if (door.open) return;
-    door.locked = false;
+    if (door.open || door.locked) return;
     door.setOpen(true, this.game.player.pos, true);
     this.game.audio.play('wallBreak', door.center, 0.5);
     this.game.cam.shake(0.05, 0.3);
@@ -789,11 +788,19 @@ class Door {
   updateNav(i) {
     const nav = this.world.nav;
     this.index = i;
-    if (this.def.to || this.def.sealed) nav.markRect(this.rect.minX, this.rect.minZ, this.rect.maxX, this.rect.maxZ, 1);
-    else nav.setDoor(i, this.rect, !this.open);
+    const r = this.rect;
+    // portas trancadas (e as de transição) funcionam como parede para a IA
+    if (this.def.to || this.def.sealed) nav.markRect(r.minX, r.minZ, r.maxX, r.maxZ, 1);
+    else if (this.locked) nav.markRect(r.minX, r.minZ, r.maxX, r.maxZ, 1, 0.16);
+    else nav.setDoor(i, r, !this.open);
   }
 
   unlock() {
+    if (this.locked && !this.def.to && !this.def.sealed && this.world.nav) {
+      const r = this.rect;
+      this.world.nav.markRect(r.minX, r.minZ, r.maxX, r.maxZ, 0, 0.16);
+      this.world.nav.setDoor(this.index, r, !this.open);
+    }
     this.locked = false;
     this.world.game.setFlag(this.flagKey, 'u');
     if (this.lamp) this.lamp.material = emissive(0x20ff40, 2);

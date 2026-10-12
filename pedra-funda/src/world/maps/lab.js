@@ -19,6 +19,8 @@ export default {
   build(L, g, w) {
     const K = makeKit(L, g, w);
     const final = !!g.flag('final_started');
+    // a contagem do elevador não sobrevive a um carregamento: pode chamar de novo
+    if (g.flag('elevator_called') && !g.flag('elevator_here')) g.setFlag('elevator_called', false);
     L.spawn('fromTunnels', 0, 8.6, Math.PI);
     L.spawn('default', 0, 8.6, Math.PI);
     const LB = { wall: 'labpanel', floor: 'labfloor', ceil: 'ceiling', h: 3.4 };
@@ -313,6 +315,12 @@ function spawnLabVigia(g, w) {
   });
   v.onLeave = () => {
     g.setMusic(null);
-    g.after(8, () => !w.isSafe(g.player.pos.x, g.player.pos.z) && spawnLabVigia(g, w));
+    // volta alguns segundos depois que o jogador deixar a área segura
+    const check = () => {
+      if (w.id !== 'lab') return;
+      if (w.isSafe(g.player.pos.x, g.player.pos.z)) g.after(1, check);
+      else g.after(6, () => spawnLabVigia(g, w));
+    };
+    g.after(2, check);
   };
 }

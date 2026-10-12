@@ -11,7 +11,7 @@ export default {
   ambience: 'building',
   music: 'explore',
   bounds: { minX: -28, minZ: -26, maxX: 32, maxZ: 14 },
-  rainBounds: { minX: 18.2, minZ: -0.2, maxX: 26, maxZ: 12 },
+  rainBounds: { minX: 18.2, minZ: -10, maxX: 26, maxZ: 22 },
   ceilDefault: 3,
 
   build(L, g, w) {
@@ -48,10 +48,9 @@ export default {
     L.room({ ...blue, id: 'gabinete', name: 'Gabinete do delegado', x0: 0, x1: 10, z0: -14, z1: -4, wall: 'wallpaperRed', floor: 'woodfloor' });
     L.room({ id: 'garagem', name: 'Garagem', x0: 10, x1: 30, z0: -24, z1: -4, h: 5, wall: 'concreteDark', floor: 'concrete', ceil: 'metalDark' });
     // beco externo (visto pelas janelas das celas)
-    L.floor(18, -1, 26, 12, 'dirt');
-    P.fence(L, 24.5, -1, 24.5, 12, 3, { barbed: true });
-    L.box(22, 0, -1.2, 8, 4, 0.3, 'brickDark');
-    L.box(22, 0, 12.2, 8, 4, 0.3, 'brickDark');
+    L.floor(18, -10, 26, 22, 'dirt');
+    P.fence(L, 24.5, -10, 24.5, 22, 3, { barbed: true });
+    L.box(28, 0, 6, 3, 6, 32, 'brickDark');
     K.light({ x: 22, y: 4, z: 5, color: 0x6a7a9a, intensity: 3, distance: 10 });
 
     // ---------------------------------------------------------------- portas
@@ -222,9 +221,9 @@ export default {
       x1: 13.5,
       z1: 9.5,
       onEnter: (g, w) => {
-        const v = w.spawnEnemy({ type: 'vigia', id: 'win_vigia', x: 21.5, z: 13, ry: Math.PI, state: 'walk', persist: false });
+        const v = w.spawnEnemy({ type: 'vigia', id: 'win_vigia', x: 21.5, z: 19, ry: Math.PI, state: 'walk', persist: false });
         if (!v) return;
-        v.walkTo = { x: 21.5, z: -3 };
+        v.walkTo = { x: 21.5, z: -9 };
         v.walkSpeed = 1.3;
         v.yaw = Math.PI;
         g.after(1.2, () => g.audio.play('stinger', null, 0.4));

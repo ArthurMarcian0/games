@@ -520,7 +520,7 @@ export class Ninhada extends Enemy {
       const r = Math.random();
       if (r < 0.55) this.spawnTendril(p.pos.x + p.vel.x * 0.5, p.pos.z + p.vel.z * 0.5);
       else this.spit();
-      if (this.exposed && chance(0.5)) setTimeout(() => this.alive && this.spawnTendril(p.pos.x + rand(-1.5, 1.5), p.pos.z + rand(-1.5, 1.5)), 400);
+      if (this.exposed && chance(0.5)) this.game.after(0.4, () => this.alive && this.world.enemies.includes(this) && this.spawnTendril(p.pos.x + rand(-1.5, 1.5), p.pos.z + rand(-1.5, 1.5)));
       this.attackT = this.exposed ? rand(1.2, 1.9) : rand(2.0, 3.0);
     }
     this.spawnT -= dt;
