@@ -16,7 +16,7 @@ export class Carcereiro extends Enemy {
     super(world, def);
     const uniform = charMat(0x1f2a3e, 0.8, { tex: 'fabric' });
     const skin = charMat(0xa89a8a, 0.6, { tex: 'paleskin' });
-    const boneMat = charMat(0xc8b898, 0.55, { tex: 'skin' });
+    const boneMat = charMat(0x8a7a62, 0.6, { tex: 'flesh' });
     const pusMat = charMat(0x6a2a10, 0.3, { emissive: 0xff7a1a, ei: 1.6 });
     this.pustules = [];
     const rig = buildHumanoid({

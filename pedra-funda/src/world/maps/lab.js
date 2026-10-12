@@ -165,6 +165,8 @@ export default {
       0,
     );
     K.doc('d_quadro', 'quadro_estagios', -17, -13.3, { model: 'none', y: 1.5, r: 1.8, prompt: 'Ler o quadro branco' });
+    L.box(-11.2, 0.79, -10.2, 0.2, 0.15, 0.03, 'woodDark', { collide: false });
+    K.examine(-11.2, -10.2, ['Um porta-retratos sobre a mesa: "EQUIPE FASE 2 — ESTAÇÃO RAIZ".', 'Seis pessoas de jaleco sorrindo para a câmera. Na ponta, de braços cruzados, Marina. Ela parece mais velha do que você lembrava. Ou mais cansada.'], { r: 1.3, prompt: 'Examinar o porta-retratos' });
     K.enemy({ id: 'lab_off', type: 'errante', x: -13, z: -7, ry: 2.5, state: 'idle', look: LABCOAT });
 
     // ---------------------------------------------------------------- segurança (segura)

@@ -211,6 +211,8 @@ export default {
     K.doc('d_fita_caio', 'fita_caio', 15.8, 8.6, { y: 0.02, model: 'tape' });
     K.item('p_key_chief', 'key_chief', 16.0, 7.6, { y: 0.02 });
     K.examine(16.6, 8.0, 'Caio. O rosto magro, os óculos quebrados no chão. Ele esperou por ajuda até o fim.', { r: 1.4 });
+    L.box(6.2, 1.0, 8.2, 0.05, 0.9, 1.2, 'paintWhite', { collide: false });
+    K.examine(6.4, 8.2, ['Uma prancheta pendurada: "CONTROLE DE DETIDOS".', 'Cela 1 — Ferreira, J. (agressão). Cela 2 — vazia. Cela 3 — MENEZES, C. (INVA) — "NÃO ALIMENTAR. Ordem do Teixeira."', 'Embaixo, com outra letra: "o rapaz não para de gritar que a água está contaminada".'], { r: 1.4, prompt: 'Ler a prancheta' });
     K.light({ x: 10, y: 2.8, z: 5, color: 0xffc890, intensity: 3.5, distance: 8, flicker: 0.4 });
     P.bulb(L, 10, 3.1, 5, true);
     K.trigger({

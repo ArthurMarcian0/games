@@ -57,6 +57,11 @@ export class World {
   // ----------------------------------------------------------------- carga
   unload() {
     if (!this.scene) return;
+    // objetos que sobrevivem entre áreas saem da cena antes do descarte
+    const p = this.game.player;
+    this.scene.remove(p.root, p.flashlight, p.flashTarget, p.fill, p.muzzleLight, p.muzzleFlash, this.weather.group, this.particles.points);
+    for (const d of this.decals.list) this.scene.remove(d);
+    this.decals.list.length = 0;
     for (const e of this.enemies) e.dispose();
     const disposeMat = (m) => {
       if (!m || m.userData.shared) return;
@@ -505,6 +510,9 @@ export class World {
     g.audio.play(def.type === 'key' ? 'keyItem' : 'pickup');
     g.hud.message(`Você pegou: ${def.name}${added > 1 ? ' ×' + added : ''}.`);
     if (def.type === 'weapon' && !g.state.equipped) g.player.equip(id);
+    if ((id === 'herb' && g.inv.count('herb') >= 2) || id === 'chem' || (id === 'gunpowder' && g.inv.count('gunpowder') >= 2)) g.hint('combine');
+    if (id === 'shotgun') g.hint('weapons');
+    if (id === 'pipe') g.hint('pipe');
     if (added < qty) {
       pk.qty = Math.ceil((qty - added) / (def.type === 'ammo' && pk.def.scaleAmmo !== false ? g.diff.ammo : 1));
       g.hud.message(`Pegou ${added}. Não cabe mais nada.`);

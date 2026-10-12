@@ -13,7 +13,7 @@ const AIM_WALK = 1.15;
 export class Player {
   constructor(game) {
     this.game = game;
-    const leather = charMat(0x3a281c, 0.62, { tex: 'fabric' });
+    const leather = charMat(0x4a3424, 0.6, { tex: 'fabric' });
     this.rig = buildHumanoid({
       height: 1.8,
       skin: 0xc49a7e,

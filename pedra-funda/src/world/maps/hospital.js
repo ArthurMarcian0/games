@@ -119,6 +119,8 @@ export default {
     K.doc('d_nota_gerador', 'nota_gerador', -4.2, 6, { y: 1.06 });
     K.item('h_fuse1', 'fuse', -1.8, 6.1, { y: 1.06 });
     K.examine(-3, 6.4, 'Um quadro de avisos atrás do balcão: "VACINAÇÃO — FILA ÚNICA". Alguém riscou VACINAÇÃO e escreveu embaixo: MATADOURO.', { r: 1.2, prompt: 'Examinar o quadro' });
+    L.box(9.8, 1.3, -1.5, 0.05, 0.8, 0.6, 'paper', { collide: false });
+    K.examine(9.4, -1.5, ['Um calendário da campanha de vacinação. Os dias 28 a 30 de setembro estão marcados: "LOTE CR-I — POPULAÇÃO GERAL".', 'O dia 5 de outubro está circulado em vermelho, com uma anotação: "simulação do vazamento — imprensa".'], { r: 1.3, prompt: 'Examinar o calendário' });
     K.enemy({ id: 'h_lobby', type: 'errante', x: 5, z: 0, ry: 2.5, state: 'idle', look: { shirt: 0xc8c8c0, pants: 0xc8c8c0, hair: 0x2a2a2a } });
 
     // ---------------------------------------------------------------- enfermaria

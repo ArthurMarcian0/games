@@ -175,9 +175,10 @@ export default {
     if (!boss1) {
       K.npc({
         id: 'joaquim',
-        x: -18.3,
+        x: -17.8,
         z: 44.6,
         ry: Math.PI / 2,
+        r: 3,
         look: LOOK.joaquim,
         pose: 'sit',
         talk: (g) => {
@@ -195,7 +196,7 @@ export default {
           else g.ui.dialog(DIALOGS.joaquim_hint_generic);
         },
       });
-      L.box(-18.3, 0, 44.6, 0.45, 0.48, 0.45, 'woodDark', { collide: false });
+      L.box(-17.8, 0, 44.6, 0.45, 0.48, 0.45, 'woodDark', { collide: false });
     } else {
       K.doc('d_bilhete_joaquim', 'bilhete_joaquim', -16.6, 45.2, { y: 1.06 });
       K.examine(-18.3, 44.6, 'O banquinho do Joaquim está vazio. A espingarda dele também sumiu.', { r: 1.6 });
@@ -428,6 +429,16 @@ export default {
     facade(L, 8, -40, 22, -26, 7, 'plasterBlue', { face: 'w', door: -33, sign: 'ESCOLA MUNICIPAL', bars: true });
     P.fence(L, 8.5, -26, 8.5, -24.5, 2);
     L.wall(22, -40, 24, -26);
+    // bicicleta infantil caída em frente à escola
+    for (const dz of [-0.45, 0.45]) L.cyl(6.9, 0.04, -33 + dz, 0.28, 0.04, 'rubber', { rx: Math.PI / 2, center: true, collide: false, seg: 14 });
+    L.box(6.9, 0.05, -33, 0.05, 0.05, 0.9, 'paintRed', { collide: false });
+    L.box(6.9, 0.05, -32.4, 0.25, 0.12, 0.2, 'metalDark', { collide: false });
+    K.examine(6.9, -33, ['Uma bicicleta infantil, cor-de-rosa, caída na calçada. Na cestinha, um caderno escolar molhado.', 'Na capa, em letra caprichada: "BEATRIZ — 3º ANO". A última página tem só uma frase: "vovô disse que amanhã a gente vai embora".'], { r: 1.6 });
+    // orelhão mudo
+    L.box(-6.9, 0, 12, 0.1, 2.0, 0.1, 'metalDark', { collide: false });
+    L.sphere(-6.9, 2.15, 12, 0.6, 'paintYellow', { scale: [0.55, 0.45, 0.55] });
+    L.box(-6.8, 1.2, 12, 0.12, 0.3, 0.18, 'plasticDark', { collide: false });
+    K.examine(-6.9, 12, ['Um orelhão. O fone está pendurado pelo fio, balançando com o vento.', 'Você leva o fone ao ouvido. Estática... e, por baixo dela, alguém respirando devagar do outro lado da linha. Desliga sozinho.'], { r: 1.5, prompt: 'Examinar o orelhão' });
 
     // ---------------------------------------------------------------- postes
     const lamp = (x, z, ry, flicker, on = true) => {
@@ -442,8 +453,9 @@ export default {
     lamp(-6.6, -54, Math.PI / 2, 0.05);
 
     // ---------------------------------------------------------------- criaturas
-    K.corpse(-1.4, 31.4, 0.4, { look: LOOK.worker, pose: 'dead', bloodSize: 2.2 });
-    K.enemy({ id: 't_eater', type: 'errante', x: -1.5, z: 30.3, ry: 0.2, state: 'eat' });
+    // de costas para quem chega pelo sul: dá para contornar em silêncio
+    K.corpse(-1.4, 29.0, 2.8, { look: LOOK.worker, pose: 'dead', bloodSize: 2.2 });
+    K.enemy({ id: 't_eater', type: 'errante', x: -1.5, z: 30.2, ry: Math.PI - 0.15, state: 'eat' });
     K.enemy({ id: 't_gas', type: 'errante', x: -12, z: -6, state: 'idle', wander: true });
     K.enemy({ id: 't_fake', type: 'errante', x: 6.4, z: -19.5, ry: 2, state: 'fakedead' });
     K.enemy({ id: 't_alley', type: 'errante', x: 22, z: -21, ry: -1.5, state: 'idle' });

@@ -30,6 +30,10 @@ const HINTS = {
   save: 'Áreas iluminadas são seguras: as criaturas não entram. Use o gravador para salvar e o armário para guardar itens.',
   radio: 'O rádio no seu peito chia quando há criaturas por perto.',
   struggle: 'Agarrado! Aperte <kbd>E</kbd> ou <kbd>Espaço</kbd> repetidamente para se soltar.',
+  combine: 'Itens podem ser combinados no inventário (<kbd>Tab</kbd> → item → Combinar). Duas ervas viram uma mistura mais forte e ocupam um só espaço.',
+  weapons: 'Troque de arma com <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> ou pelo inventário. A espingarda é devastadora de perto — e cada cartucho é precioso.',
+  pipe: 'O cano de ferro não gasta munição: com ele equipado, clique para golpear. Ele quebra depois de alguns golpes.',
+  docs: 'Documentos lidos ficam na aba ARQUIVOS do inventário. Muitas pistas estão escondidas neles.',
 };
 
 export class Game {
@@ -319,6 +323,7 @@ export class Game {
     if (!this.state.docs.includes(id)) {
       this.state.docs.push(id);
       this.hud.message(`Arquivo adicionado: ${DOCS[id].title}`);
+      if (this.state.docs.length === 1) this.after(1, () => this.hint('docs'));
     }
     this.ui.openDoc(id);
   }
