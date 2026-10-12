@@ -30,4 +30,4 @@ createServer(async (req, res) => {
     res.writeHead(404);
     res.end('Não encontrado');
   }
-}).listen(port, () => console.log(`SkyHoop rodando em http://localhost:${port}`));
+}).listen(port, () => console.log(`Servidor em http://localhost:${port}  (SkyHoop: /  ·  Pedra Funda: /pedra-funda/)`));

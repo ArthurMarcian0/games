@@ -1,3 +1,16 @@
+# Jogos
+
+Este repositório reúne protótipos jogáveis feitos com **Three.js** e JavaScript
+puro (módulos ES, sem etapa de build). Rode `npm start` (ou
+`python3 -m http.server 8080`) na raiz e abra no navegador:
+
+| Jogo | Endereço | Descrição |
+| --- | --- | --- |
+| **SkyHoop Arena** | <http://localhost:8080/> | Basquete 3D estilizado (documentado abaixo). |
+| **Pedra Funda — Parte I: Quarentena** | <http://localhost:8080/pedra-funda/> | Survival horror 3D em terceira pessoa. Veja [`pedra-funda/README.md`](pedra-funda/README.md). |
+
+---
+
 # SkyHoop Arena — Basquete 3D
 
 Protótipo jogável de um jogo de basquete 3D estilizado, feito com **Three.js** e
