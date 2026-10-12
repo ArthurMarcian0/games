@@ -119,7 +119,7 @@ ESTAÇÃO RAIZ — laboratório (amostras, terminal, elevador)  → FINAL / ganc
 - Pontos seguros (luz quente, música própria, inimigos não entram) com
   gravador para salvar em 3 registros e armário compartilhado.
 - Mapa de cada área com salas visitadas, portas trancadas/abertas e visão geral
-  da região; arquivo de documentos, gravações e fotografias (24 no total).
+  da região; arquivo de documentos, gravações e fotografias (27 no total).
 - Dificuldade Fácil / Normal / Difícil (dano, resistência e munição).
 
 ## Estrutura do código

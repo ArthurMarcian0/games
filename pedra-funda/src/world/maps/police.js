@@ -263,7 +263,6 @@ export default {
     K.storage(-13.2, -13.6, 0);
     K.light({ x: -13, y: 2.7, z: -9, color: 0xffb070, intensity: 7, distance: 9 });
     P.bulb(L, -13, 3.1, -9, true, 0xffb070);
-    K.item('p_herb_rest', 'herb', -15.6, -11.3, { y: 0.47 });
 
     // ---------------------------------------------------------------- arsenal
     for (let i = 0; i < 3; i++) L.box(-7.6, 0, -11 + i * 2.6, 0.5, 2, 2.2, 'metalDark');

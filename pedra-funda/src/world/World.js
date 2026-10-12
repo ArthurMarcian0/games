@@ -96,6 +96,9 @@ export class World {
     this.baseAmbient = map.ambient ?? 0.25;
     this.flash = new THREE.PointLight(0xffa050, 0, 14, 2);
     scene.add(this.flash);
+    // mapa de ambiente procedural (reflexos sutis em poças, vidro e metal)
+    scene.environment = this.envFor(map);
+    scene.environmentIntensity = map.envIntensity ?? (map.rain ? 0.35 : 0.22);
     this.collision = new CollisionWorld();
     this.enemies = [];
     this.doors = [];
@@ -149,6 +152,42 @@ export class World {
     g.cam.setYaw(sp.ry);
     g.cam.pitch = -0.08;
     if (map.onEnter) map.onEnter(g, this, spawnName);
+  }
+
+  envFor(map) {
+    this.envCache ||= new Map();
+    const key = map.id;
+    if (this.envCache.has(key)) return this.envCache.get(key);
+    const r = this.game.renderer.renderer;
+    const pm = new THREE.PMREMGenerator(r);
+    const s = new THREE.Scene();
+    const sky = new THREE.Color(map.envSky ?? (map.rain ? 0x2a3442 : 0x1a1c20));
+    const ground = new THREE.Color(0x050505);
+    const geo = new THREE.SphereGeometry(10, 32, 16);
+    const col = [];
+    const pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const t = Math.max(0, Math.min(1, pos.getY(i) / 10 * 0.5 + 0.5));
+      const c = ground.clone().lerp(sky, Math.pow(t, 1.5));
+      col.push(c.r, c.g, c.b);
+    }
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    s.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide })));
+    // "janelas" e lâmpadas distantes refletidas
+    const warm = new THREE.MeshBasicMaterial({ color: map.envLight ?? 0xffb070 });
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * Math.PI * 2;
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.3), warm);
+      m.position.set(Math.cos(a) * 8, 1 + (i % 3) * 0.8, Math.sin(a) * 8);
+      m.lookAt(0, 0, 0);
+      s.add(m);
+    }
+    const tex = pm.fromScene(s, 0.04).texture;
+    pm.dispose();
+    geo.dispose();
+    tex.userData.keep = true;
+    this.envCache.set(key, tex);
+    return tex;
   }
 
   // ----------------------------------------------------------------- luzes

@@ -328,7 +328,6 @@ export default {
       Math.PI / 2,
     );
     K.doc('d_cartaz', 'cartaz_vacina', -11.0, -44.5, { model: 'none', y: 1.5, glint: true });
-    K.item('t_herb_plaza', 'herb', 8.5, -44.2, { y: 0.02 });
     // delegacia
     P.fence(L, -14, -60, -1.5, -60, 2.4, { barbed: true });
     P.fence(L, 1.5, -60, 14, -60, 2.4, { barbed: true });

@@ -219,7 +219,6 @@ export default {
       if (Math.random() < dt * 3) w.particles.steam(new THREE.Vector3(13 + Math.random(), 2.2, -2));
     });
     K.item('s_shells2', 'ammo_shotgun', 20.4, -9, { y: 0.02, qty: 3 });
-    K.item('s_herb2', 'herb', 7, -0.8, { y: 0.02 });
     K.enemy({ id: 's_boiler', type: 'errante', x: 13, z: -4, state: 'idle', wander: true, look: { shirt: 0x3a4a6a, pants: 0x2a3040, hair: 0x1a1410 } });
     K.enemy({ id: 's_cor', type: 'errante', x: 4, z: 2, ry: Math.PI / 2, state: 'fakedead' });
     K.light({ x: 13, y: 2.5, z: -4, color: 0xff7030, intensity: 3, distance: 8, flicker: 0.15 });

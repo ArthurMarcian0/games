@@ -8,7 +8,7 @@ export const DEFAULTS = {
   ambient: 0.85,
   sensitivity: 1,
   invertY: false,
-  brightness: 1,
+  brightness: 1.12,
   quality: 'medium',
   fov: 68,
   subtitles: true,

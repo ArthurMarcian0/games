@@ -9,7 +9,7 @@ export default {
   fog: { color: 0x050505, density: 0.08 },
   sky: 0x1c2024,
   ground: 0x060606,
-  ambient: 0.06,
+  ambient: 0.1,
   ambience: 'tunnels',
   music: 'explore',
   bounds: { minX: -33, minZ: -92, maxX: 33, maxZ: 2 },
@@ -59,7 +59,7 @@ export default {
     // luzes
     const bulbL = (x, z, flicker, h = 3.3, col = 0xffc070, int = 4) => {
       P.bulb(L, x, h, z, true, col);
-      K.light({ x, y: h - 0.5, z, color: col, intensity: int, distance: 8, flicker });
+      K.light({ x, y: h - 0.5, z, color: col, intensity: int * 1.4, distance: 10, flicker });
     };
     bulbL(0, -8, 0.1);
     bulbL(0, -24, 0.5);

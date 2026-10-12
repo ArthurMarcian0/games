@@ -240,13 +240,11 @@ export default {
     P.bulb(L, 8.5, 2.75, -9.5, true, 0xffa050);
     K.light({ x: 8.5, y: 2.2, z: -9.5, color: 0xffa050, intensity: 6, distance: 9, flicker: 0.04 });
     K.doc('d_abilio', 'diario_abilio', 8.6, -9.6, { y: 0.77, onRead: (g) => g.setFlag('read_abilio') });
-    K.item('f_herb_cabin', 'herb', 5.2, -6, { y: 0.02 });
     // esconderijo
     L.box(15.5, 0, -13.5, 2.6, 0.9, 0.6, 'oldwood');
     K.doc('d_cracha', 'cracha_vertice', 15.2, -13.5, { y: 0.92 });
     K.item('f_shells_secret', 'ammo_shotgun', 16.2, -13.4, { y: 0.92, qty: 6 });
     K.item('f_herb_s1', 'herb', 16.3, -10, { y: 0.02 });
-    K.item('f_herb_s2', 'herb', 15.4, -9.8, { y: 0.02 });
     K.item('f_powder', 'gunpowder', 14.8, -12.4, { y: 0.02 });
     K.light({ x: 15.5, y: 2.2, z: -11.5, color: 0xffa050, intensity: 2, distance: 5 });
 

@@ -86,11 +86,11 @@ export default {
     });
 
     // ---------------------------------------------------------------- iluminação
-    const fl = (x, z, flicker = 0.05, h = 3.2, intensity = 6) => {
+    const fl = (x, z, flicker = 0.05, h = 3.2, intensity = 9) => {
       P.fluorescent(L, x, h, z, 0, lightsOn);
-      if (lightsOn) K.light({ x, y: h - 0.3, z, color: 0xe0f0ff, intensity, distance: 10, flicker });
+      if (lightsOn) K.light({ x, y: h - 0.3, z, color: 0xe0f0ff, intensity, distance: 13, flicker });
     };
-    fl(0, 4, 0.05, 4.2, 9);
+    fl(0, 4, 0.05, 4.2, 13);
     fl(-14, -6, 0.1);
     fl(14, -6, 0.5);
     fl(-20, 4, 0.2);
@@ -167,7 +167,6 @@ export default {
     ])
       L.box((x0 + x1) / 2, 1.0, (z0 + z1) / 2, Math.max(0.05, x1 - x0), 0.05, Math.max(0.05, z1 - z0), 'metalDark', { collide: false });
     K.interact({ x: 28, z: -1.6, r: 1.5, prompt: 'Descer para o subsolo', use: (g) => g.transition('hospital_sub', 'fromUp', 'stairs') });
-    K.item('h_herb_stairs', 'herb', 23, 6.8, { y: 0.02 });
     P.sign(L, 22.17, 2.2, 1.5, 1.6, 0.4, 'SUBSOLO ↓', Math.PI / 2, { bg: '#e8e8e0', fg: '#1a1a1a' });
 
     // ---------------------------------------------------------------- raio-x
@@ -259,7 +258,6 @@ export default {
     K.light({ x: -1, y: 2.8, z: -13, color: 0xffb070, intensity: 7, distance: 9 });
     P.bulb(L, -1, 3.2, -13, true, 0xffb070);
     K.doc('d_brandt', 'relatorio_brandt', -0.4, -15.4, { y: 0.79 });
-    K.item('h_herb_dir', 'herb', 3.8, -9.0, { y: 0.02 });
     K.npc({
       id: 'renata',
       x: 2.4,
